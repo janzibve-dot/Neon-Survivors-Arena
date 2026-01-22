@@ -12,6 +12,13 @@
     <div class="scanlines"></div>
     <div id="damageOverlay"></div>
     
+    <div id="shiftAlert" style="display: none;">
+        <div class="alert-box">
+            <h1 class="blink-text">⚠ УГРОЗА ОБНАРУЖЕНА ⚠</h1>
+            <p class="press-shift">НАЖМИ [SHIFT] ДЛЯ ЗАПУСКА РАКЕТ</p>
+        </div>
+    </div>
+
     <div id="bossTimerContainer">
         БОСС ЧЕРЕЗ: <span id="bossCountdown">60</span>
     </div>
@@ -25,12 +32,12 @@
 
     <div id="ultOverlay" style="display: none;">
         <h1 class="cyber-glitch" style="font-size: 2.5em; color: var(--cyber-yellow);">>> СИСТЕМА ПЕРЕГРУЖЕНА <<</h1>
-        <p class="cyber-text" style="color: red; font-size: 1.5em; animation: flashText 0.2s infinite;">ДВИГАТЕЛЬ ОТКЛЮЧЕН. РАКЕТЫ АКТИВНЫ.</p>
+        <p class="cyber-text" style="color: red; font-size: 1.5em; animation: flashText 0.2s infinite;">ДВИГАТЕЛЬ ОТКЛЮЧЕН</p>
     </div>
 
     <div id="startScreen" class="screen cyber-panel">
         <h1 class="cyber-glitch" data-text="Neon-Survivors-Arena">Neon-Survivors-Arena</h1>
-        <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | CLICK - ОГОНЬ</p>
+        <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | CLICK - ОГОНЬ | SHIFT - УЛЬТА (НА БОССЕ)</p>
         <p class="cyber-text-small" style="color: var(--cyber-yellow);">ЛУЧШИЙ РЕЗУЛЬТАТ: <span id="menuHighScore">0</span></p>
         <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
     </div>
