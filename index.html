@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBERPUNK SURVIVOR</title>
+    <title>CYBERPUNK SURVIVOR: INFINITY</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -13,54 +13,59 @@
     <div id="damageOverlay"></div>
 
     <div id="startScreen" class="screen cyber-panel">
-        <h1 class="cyber-glitch" data-text="CYBERPUNK SURVIVOR">CYBERPUNK SURVIVOR</h1>
+        <h1 class="cyber-glitch" data-text="NEON PROTOCOL">NEON PROTOCOL</h1>
         <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | CLICK - ОГОНЬ</p>
+        <p class="cyber-text-small" style="color: var(--cyber-yellow);">ЛУЧШИЙ РЕЗУЛЬТАТ: <span id="menuHighScore">0</span></p>
         <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
     </div>
 
     <div id="pauseScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="cyber-glitch" data-text="СИСТЕМА ОСТАНОВЛЕНА">СИСТЕМА ОСТАНОВЛЕНА</h1>
+        <h1 class="cyber-glitch" data-text="PAUSE">PAUSE</h1>
         <button id="resumeBtn" class="cyber-button">ПРОДОЛЖИТЬ >></button>
     </div>
 
     <div id="ui">
+        
+        <div class="right-hud tech-panel-small">
+            <div class="hud-row">SCORE: <span id="scoreValue" class="cyber-highlight">0</span></div>
+            <div class="hud-row" style="color: var(--cyber-yellow);">BEST: <span id="bestScoreValue">0</span></div>
+            <div class="hud-row" style="color: var(--cyber-magenta);">STAGE: <span id="stageValue">1</span></div>
+        </div>
+
+        <div class="left-hud">
+            <div class="top-bar">
+                <div class="level-box cyber-text">LVL.<span id="levelValue">1</span></div>
+                <div class="tech-bar-container xp-container">
+                    <div class="tech-bar-fill xp-fill" id="xpBar"></div>
+                </div>
+            </div>
+
+            <div class="hp-wrapper tech-panel-small">
+                <div class="bar-text cyber-text-small">HP STATUS: <span id="hpText">100/100</span></div>
+                <div class="tech-bar-container">
+                    <div class="tech-bar-fill hp-fill" id="hpBar"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="bossContainer" style="display: none;">
-             <div class="boss-label cyber-text-small">// УГРОЗА ОМЕГА-КЛАССА //</div>
+             <div class="boss-label cyber-text-small">// ВНИМАНИЕ: БОСС [УРОВЕНЬ <span id="bossLvl">1</span>] //</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
         </div>
-
-        <div class="top-bar">
-            <div class="level-box cyber-text">LVL.<span id="levelValue">1</span></div>
-             <div class="tech-bar-container xp-container">
-                <div class="tech-bar-fill xp-fill" id="xpBar"></div>
-            </div>
-        </div>
-
-        <div class="hp-wrapper tech-panel-small">
-            <div class="bar-text cyber-text-small">HP СТАТУС: <span id="hpText">100/100</span></div>
-            <div class="tech-bar-container">
-                <div class="tech-bar-fill hp-fill" id="hpBar"></div>
-            </div>
-        </div>
-
-        <div class="stats tech-panel-small">
-            <div>ДАННЫЕ: <span id="scoreValue" class="cyber-highlight">0</span></div>
-            <div>ВРЕМЯ: <span id="timer" class="cyber-highlight">0</span></div>
-        </div>
     </div>
 
     <div id="levelUpScreen" class="screen cyber-panel" style="display: none;">
-        <h2 class="cyber-text">>> ОБНОВЛЕНИЕ ПРОШИВКИ <<</h2>
+        <h2 class="cyber-text">>> UPGRADE SYSTEM <<</h2>
         <div id="upgradeContainer"></div>
     </div>
 
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="cyber-glitch alert-text" data-text="КРИТИЧЕСКИЙ СБОЙ">КРИТИЧЕСКИЙ СБОЙ</h1>
-        <p class="cyber-subtext">ВРЕМЯ В СЕТИ: <span id="finalTime" class="cyber-highlight">0</span> СЕК</p>
-        <p class="cyber-subtext">УСТРАНЕНО УГРОЗ: <span id="finalScore" class="cyber-highlight">0</span></p>
-        <button onclick="location.reload()" class="cyber-button">ПЕРЕЗАГРУЗКА СИСТЕМЫ</button>
+        <h1 class="cyber-glitch alert-text" data-text="FATAL ERROR">FATAL ERROR</h1>
+        <p class="cyber-subtext">FINAL SCORE: <span id="finalScore" class="cyber-highlight">0</span></p>
+        <p class="cyber-subtext">STAGE REACHED: <span id="finalStage" class="cyber-highlight">0</span></p>
+        <button onclick="location.reload()" class="cyber-button">REBOOT SYSTEM</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
