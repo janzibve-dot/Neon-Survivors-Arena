@@ -23,7 +23,7 @@ const MAX_ENEMIES = 50;
 // Управление
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
-let isMouseDown = false; // Флаг: зажата ли мышка
+let isMouseDown = false;
 
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
@@ -32,10 +32,9 @@ window.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
-
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
-// ЛОГИКА БЕСКОНЕЧНОЙ СТРЕЛЬБЫ
+// БЕСКОНЕЧНАЯ СТРЕЛЬБА
 window.addEventListener('mousedown', () => { isMouseDown = true; });
 window.addEventListener('mouseup', () => { isMouseDown = false; });
 
@@ -168,9 +167,8 @@ class Player {
         this.maxHp = 100; this.hp = 100;
         this.level = 1; this.xp = 0; this.nextLevelXp = 100;
         
-        // БАЛАНС: Начальный урон снижен до 5, чтобы враги не умирали сразу
-        this.damage = 5;
-        this.fireRate = 10; // Чем меньше, тем быстрее (было 15)
+        this.damage = 5; // Урон игрока
+        this.fireRate = 10;
         this.cooldown = 0;
         this.weaponType = 'DEFAULT';
         this.hitTimer = 0; this.muzzleFlash = 0;
@@ -189,7 +187,7 @@ class Player {
         if (this.cooldown > 0) this.cooldown--;
         if (this.muzzleFlash > 0) this.muzzleFlash--;
 
-        // БЕСКОНЕЧНАЯ СТРЕЛЬБА: Если мышь зажата - стреляем
+        // БЕСКОНЕЧНАЯ СТРЕЛЬБА
         if (isMouseDown) this.tryShoot();
     }
     tryShoot() {
@@ -219,7 +217,7 @@ class Player {
             this.xp -= this.nextLevelXp;
             this.level++;
             this.nextLevelXp = Math.floor(this.nextLevelXp * 1.2);
-            isMouseDown = false; // Сброс стрельбы чтобы не стрелять в меню
+            isMouseDown = false;
             sound.levelUp();
             currentState = STATE.LEVEL_UP;
             showUpgradeScreen();
@@ -273,21 +271,17 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
-            // БАЛАНС: Увеличиваем HP врагов, чтобы по ним надо было стрелять несколько раз
             if (typeChance < 0.2) { 
-                // Танк
                 this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
-                this.hp = 30; this.maxHp=30; // Было 6, стало 30
+                this.hp = 30; this.maxHp=30; 
                 this.damage=30; this.xpReward=50; this.color='#bf00ff'; 
             } else if (typeChance < 0.5) { 
-                // Бегун
                 this.type = 'runner'; this.radius = 10; this.speed = 4; 
-                this.hp=5; this.maxHp=5; // Было 1, стало 5
+                this.hp=5; this.maxHp=5; 
                 this.damage=10; this.xpReward=15; this.color='#ffaa00'; 
             } else { 
-                // Обычный
                 this.type = 'normal'; this.radius = 15; this.speed=2.0; 
-                this.hp=10; this.maxHp=10; // Было 2, стало 10
+                this.hp=10; this.maxHp=10; 
                 this.damage=15; this.xpReward=20; this.color='#ff0055'; 
             }
         }
@@ -325,17 +319,23 @@ class Enemy {
         else { ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); }
         ctx.fill();
 
-        // ПОЛОСКА ЗДОРОВЬЯ НА ВРАГАХ
-        // Рисуем всегда, если враг не босс (у босса своя полоска сверху)
+        // ПОЛОСКА ЗДОРОВЬЯ (ИСПРАВЛЕНА)
         if (!this.isBoss) {
-            // Фон полоски
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30, 4);
+            ctx.shadowBlur = 0; // Отключаем свечение для четкости бара
             
-            // Сама жизнь (Зеленая)
-            ctx.fillStyle = '#00ff00';
+            // Красный фон (показывает, сколько жизни потеряно)
+            ctx.fillStyle = '#550000';
+            ctx.fillRect(this.x - 15, this.y - this.radius - 12, 30, 5);
+            
+            // Зеленая полоска (показывает, сколько жизни осталось)
             const hpPercent = Math.max(0, this.hp / this.maxHp);
-            ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30 * hpPercent, 4);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(this.x - 15, this.y - this.radius - 12, 30 * hpPercent, 5);
+            
+            // Тонкая рамка (опционально, для красоты)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(this.x - 15, this.y - this.radius - 12, 30, 5);
         }
         ctx.restore();
     }
@@ -478,8 +478,8 @@ function animate() {
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
-            // Чуть увеличили радиус попадания (+5 пикселей)
-            if (dist < enemy.radius + b.radius + 5) {
+            // Увеличили радиус попадания (чтобы легче попадать)
+            if (dist < enemy.radius + b.radius + 10) {
                 b.active = false; 
                 enemy.hp -= b.damage; 
                 enemy.hitFlash = 3;
