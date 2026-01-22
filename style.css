@@ -1,5 +1,5 @@
 
-/* Базовые настройки страницы */
+/* Базовые настройки */
 body {
     margin: 0;
     overflow: hidden;
@@ -9,6 +9,7 @@ body {
 
 canvas {
     display: block;
+    cursor: crosshair; /* Курсор в виде прицела */
 }
 
 /* Интерфейс */
@@ -20,13 +21,14 @@ canvas {
     font-size: 24px;
     font-weight: bold;
     pointer-events: none;
-    line-height: 1.5;
+    line-height: 1.6;
+    text-shadow: 1px 1px 2px black;
 }
 
-/* Цвет для цифры XP */
-#xpValue {
-    color: #e74c3c; /* Красный цвет */
-}
+/* Цвета для значений */
+#xpValue { color: #e74c3c; }    /* Красный */
+#scoreValue { color: #f1c40f; } /* Желтый */
+#timer { color: #3498db; }      /* Синий */
 
 /* Экран проигрыша */
 #gameOverScreen {
@@ -35,19 +37,16 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.9);
     padding: 40px;
     border-radius: 15px;
     text-align: center;
     color: white;
     border: 2px solid #e74c3c;
-    min-width: 200px;
+    min-width: 250px;
 }
 
-h1 {
-    margin-top: 0;
-    color: #e74c3c;
-}
+h1 { margin-top: 0; color: #e74c3c; }
 
 button {
     padding: 15px 30px;
@@ -57,6 +56,7 @@ button {
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    margin-top: 15px;
 }
 
 button:hover {
