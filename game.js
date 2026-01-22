@@ -11,9 +11,9 @@ resize();
 window.addEventListener('resize', resize);
 
 // Состояние игры
-let isGameOver = false; // Игра идет?
-let frameCount = 0;     // Счётчик кадров (нужен для таймера и спавна)
-let scoreTime = 0;      // Время выживания
+let isGameOver = false;
+let frameCount = 0;
+let scoreTime = 0;
 
 // --- 2. УПРАВЛЕНИЕ ---
 const keys = {};
@@ -30,10 +30,11 @@ class Player {
         this.radius = 15;
         this.color = '#3498db'; // Синий
         this.speed = 5;
+        this.xp = 100; // Теперь это XP (опыт/жизнь)
     }
 
     update() {
-        // Движение (работает на любой раскладке)
+        // Движение
         if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
         if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
@@ -58,35 +59,21 @@ class Player {
 // ВРАГ
 class Enemy {
     constructor() {
-        // Логика: спавним врага за краем экрана
-        // Случайно выбираем сторону: 0-верх, 1-право, 2-низ, 3-лево
         const side = Math.floor(Math.random() * 4); 
         this.radius = 15;
-        this.speed = 2; // Враги медленнее игрока
+        this.speed = 2;
         this.color = '#e74c3c'; // Красный
 
-        if (side === 0) { // Сверху
-            this.x = Math.random() * canvas.width;
-            this.y = -this.radius;
-        } else if (side === 1) { // Справа
-            this.x = canvas.width + this.radius;
-            this.y = Math.random() * canvas.height;
-        } else if (side === 2) { // Снизу
-            this.x = Math.random() * canvas.width;
-            this.y = canvas.height + this.radius;
-        } else { // Слева
-            this.x = -this.radius;
-            this.y = Math.random() * canvas.height;
-        }
+        if (side === 0) { this.x = Math.random() * canvas.width; this.y = -this.radius; }
+        else if (side === 1) { this.x = canvas.width + this.radius; this.y = Math.random() * canvas.height; }
+        else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + this.radius; }
+        else { this.x = -this.radius; this.y = Math.random() * canvas.height; }
     }
 
     update(player) {
-        // Вычисляем угол к игроку
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const angle = Math.atan2(dy, dx);
-
-        // Двигаем врага к игроку
         this.x += Math.cos(angle) * this.speed;
         this.y += Math.sin(angle) * this.speed;
     }
@@ -102,32 +89,31 @@ class Enemy {
 
 // --- 4. ИНИЦИАЛИЗАЦИЯ ---
 const player = new Player();
-const enemies = []; // Массив (список) всех врагов
+const enemies = [];
 
-// --- 5. ФУНКЦИЯ КОНЦА ИГРЫ ---
+// --- 5. КОНЕЦ ИГРЫ ---
 function gameOver() {
     isGameOver = true;
-    // Показываем экран проигрыша
     document.getElementById('gameOverScreen').style.display = 'block';
     document.getElementById('finalTime').innerText = scoreTime;
 }
 
 // --- 6. ИГРОВОЙ ЦИКЛ ---
 function animate() {
-    if (isGameOver) return; // Если проиграли — стоп кадр
+    if (isGameOver) return;
 
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     frameCount++;
 
-    // Обновляем таймер каждую секунду (примерно каждые 60 кадров)
+    // Таймер
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
     }
 
-    // Создаем врага каждые 60 кадров (1 секунда)
+    // Спавн врагов
     if (frameCount % 60 === 0) {
         enemies.push(new Enemy());
     }
@@ -137,20 +123,30 @@ function animate() {
     player.draw();
 
     // Враги
-    enemies.forEach((enemy, index) => {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
         enemy.update(player);
         enemy.draw();
 
-        // Проверка: коснулся ли враг игрока?
-        // Math.hypot считает расстояние между двумя точками
+        // Проверка столкновения
         const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
 
-        // Если расстояние меньше суммы радиусов — касание!
         if (dist < player.radius + enemy.radius) {
-            gameOver();
+            // 1. Отнимаем 20 XP
+            player.xp -= 20;
+            // Обновляем текст на экране
+            document.getElementById('xpValue').innerText = player.xp;
+
+            // 2. Удаляем врага
+            enemies.splice(i, 1);
+
+            // 3. Если XP кончились (0 или меньше)
+            if (player.xp <= 0) {
+                gameOver();
+            }
         }
-    });
+    }
 }
 
-// Поехали!
+// Старт
 animate();
