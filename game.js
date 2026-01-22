@@ -15,15 +15,17 @@ let currentState = STATE.MENU;
 
 // Глобальные переменные игры
 let frameCount = 0;
+let scoreTime = 0;
 let killScore = 0;
-let highScore = localStorage.getItem('neonSurvivorHighScore') || 0;
-let gameStage = 1;              // Текущая стадия (увеличивается после босса)
-let difficultyMultiplier = 1.0; // Множитель сложности (+5% за стадию)
+// Обновили ключ сохранения под новое название игры
+let highScore = localStorage.getItem('neonSurvivorsArenaHighScore') || 0;
+let gameStage = 1;              
+let difficultyMultiplier = 1.0; 
 
 let spawnTimer = 0;
 let spawnInterval = 90;
 const MAX_ENEMIES_NORMAL = 50;
-const MAX_ENEMIES_BOSS = 6;     // Лимит миньонов при боссе
+const MAX_ENEMIES_BOSS = 6;     
 
 // Управление
 const keys = {};
@@ -43,7 +45,7 @@ window.addEventListener('mouseup', () => { isMouseDown = false; });
 
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('resumeBtn').addEventListener('click', togglePause);
-document.getElementById('menuHighScore').innerText = highScore; // Показать рекорд в меню
+document.getElementById('menuHighScore').innerText = highScore; 
 
 // --- 2. ЗВУКИ ---
 class SoundManager {
@@ -170,7 +172,6 @@ class BulletPool {
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
                 
                 ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
-                // Трейл
                 ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(b.x, b.y);
                 ctx.lineTo(b.x - b.vx*2, b.y - b.vy*2); ctx.stroke();
@@ -203,13 +204,11 @@ class EnemyBulletPool {
                 b.x += b.vx; b.y += b.vy; b.life--;
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
                 
-                // Рисуем
                 ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
 
-                // Коллизия с игроком
                 const dist = Math.hypot(b.x - player.x, b.y - player.y);
                 if (dist < player.radius + 4) {
-                    player.takeDamage(5); // Урон от пули врага
+                    player.takeDamage(5); 
                     b.active = false;
                     particlePool.explode(player.x, player.y, '#ff2a2a', 5);
                 }
@@ -228,7 +227,12 @@ class Player {
         this.color = '#00f3ff';
         this.speed = 5; this.angle = 0;
         this.maxHp = 100; this.hp = 100;
-        this.level = 1; this.xp = 0; this.nextLevelXp = 100;
+        this.level = 1; 
+        this.xp = 0; 
+        
+        // --- ИЗМЕНЕНИЕ: В 2 РАЗА БОЛЬШЕ XP ДЛЯ УРОВНЯ ---
+        this.nextLevelXp = 200; // Было 100, теперь 200 (бонусное окно в 2 раза реже)
+        
         this.damage = 10; this.fireRate = 10; this.cooldown = 0;
         this.weaponType = 'DEFAULT'; this.hitTimer = 0;
     }
@@ -296,13 +300,11 @@ class Enemy {
     constructor(isBoss = false) {
         this.isBoss = isBoss; this.waitTimer = 60; this.hitFlash = 0;
         
-        // Умножаем здоровье и урон на множитель сложности
         const hpMult = difficultyMultiplier;
 
         if (isBoss) {
             sound.bossSpawn();
             this.type = 'boss'; this.radius = 60; 
-            // Босс чуть быстрее чем раньше (был 0.8)
             this.speed = 1.2 * hpMult;
             this.maxHp = Math.floor((500 + (player.level * 50)) * hpMult);
             this.hp = this.maxHp;
@@ -310,7 +312,7 @@ class Enemy {
             this.color = '#ff2a2a'; 
             this.x = canvas.width / 2; this.y = -100;
             document.getElementById('bossContainer').style.display = 'block';
-            document.getElementById('bossLvl').innerText = gameStage; // Показываем уровень босса
+            document.getElementById('bossLvl').innerText = gameStage; 
             bossActive = true;
         } else {
             const side = Math.floor(Math.random() * 4); const typeChance = Math.random(); const offset = 50;
@@ -319,14 +321,12 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
-            // Логика типа врага. 
-            // Если босс активен, спавним только "дронов" (Runner/Shooter)
             if (bossActive) {
                 this.type = 'drone'; this.radius = 12; this.speed = 3.5; 
                 this.hp = 10 * hpMult; this.maxHp = this.hp;
                 this.damage = 5 * hpMult; this.xpReward = 10;
                 this.color = '#ffea00';
-                this.canShoot = true; // Миньоны босса могут стрелять
+                this.canShoot = true; 
                 this.shootCooldown = Math.random() * 200 + 100;
             } else if (typeChance < 0.2) { 
                 this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
@@ -352,13 +352,12 @@ class Enemy {
             this.x += Math.cos(a) * 0.5; this.y += Math.sin(a) * 0.5; return;
         }
 
-        // Стрельба (только для дронов)
         if (this.canShoot && !this.isBoss) {
             this.shootCooldown--;
             if (this.shootCooldown <= 0) {
                 const angle = Math.atan2(player.y - this.y, player.x - this.x);
                 enemyBulletPool.get(this.x, this.y, angle);
-                this.shootCooldown = Math.random() * 300 + 100; // Редкая стрельба
+                this.shootCooldown = Math.random() * 300 + 100;
             }
         }
 
@@ -389,10 +388,8 @@ class Enemy {
         }
         ctx.fill();
 
-        // Обводка
         ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
 
-        // HP Bar
         if (!this.isBoss) {
             ctx.shadowBlur = 0; 
             const barWidth = 40; const barHeight = 4;
@@ -424,7 +421,6 @@ function startGame() {
     player.reset(); enemies = []; bossActive = false;
     document.getElementById('bossContainer').style.display = 'none';
     
-    // Сброс параметров уровня
     gameStage = 1;
     difficultyMultiplier = 1.0;
     
@@ -446,10 +442,9 @@ function gameOver() {
     document.getElementById('finalScore').innerText = killScore;
     document.getElementById('finalStage').innerText = gameStage;
 
-    // Сохранение рекорда
     if (killScore > highScore) {
         highScore = killScore;
-        localStorage.setItem('neonSurvivorHighScore', highScore);
+        localStorage.setItem('neonSurvivorsArenaHighScore', highScore);
         document.getElementById('menuHighScore').innerText = highScore;
     }
 }
@@ -501,20 +496,13 @@ function animate() {
 
     frameCount++;
     if (frameCount % 60 === 0) {
-        // Спавн босса каждые 60 секунд (если не активен)
         if (scoreTime > 0 && scoreTime % 60 === 0 && !bossActive) enemies.push(new Enemy(true));
-        
         scoreTime++;
-        // Усложнение спавна
         if (scoreTime % 10 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
 
     spawnTimer++;
-    // ЛОГИКА СПАВНА:
-    // 1. Если босса нет, спавним до 50 врагов.
-    // 2. Если босс ЕСТЬ, спавним только если миньонов меньше 6.
     let maxE = bossActive ? MAX_ENEMIES_BOSS : MAX_ENEMIES_NORMAL;
-    
     if (spawnTimer >= spawnInterval && enemies.length < maxE) { 
         enemies.push(new Enemy()); 
         spawnTimer = 0; 
@@ -524,7 +512,7 @@ function animate() {
     floatText.updateAndDraw();
     player.update(); player.draw();
     bulletPool.updateAndDraw();
-    enemyBulletPool.updateAndDraw(player); // Обновляем пули врагов
+    enemyBulletPool.updateAndDraw(player);
 
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i]; enemy.update(player); enemy.draw();
@@ -554,14 +542,12 @@ function animate() {
                     sound.enemyDeath(); particlePool.explode(enemy.x, enemy.y, enemy.color, 30);
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
                     
-                    // ЕСЛИ УМЕР БОСС
                     if (enemy.isBoss) { 
                         bossActive = false; 
                         document.getElementById('bossContainer').style.display = 'none'; 
                         
-                        // ПЕРЕХОД НА НОВЫЙ УРОВЕНЬ
                         gameStage++;
-                        difficultyMultiplier *= 1.05; // +5% сложности
+                        difficultyMultiplier *= 1.05; 
                         floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED! DIFFICULTY UP", "#ff2a2a");
                         updateUI();
                     }
