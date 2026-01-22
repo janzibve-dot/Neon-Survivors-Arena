@@ -124,14 +124,17 @@ const particlePool = new ParticlePool(500);
 class BulletPool {
     constructor(size) {
         this.pool = [];
-        for (let i = 0; i < size; i++) this.pool.push({active: false, x:0, y:0, vx:0, vy:0, life:0, trail:[]});
+        // ВАЖНО: Инициализируем damage сразу, чтобы избежать NaN
+        for (let i = 0; i < size; i++) this.pool.push({active: false, x:0, y:0, vx:0, vy:0, life:0, damage: 1, trail:[]});
     }
     get(x, y, angle, speed, damage) {
         for (let b of this.pool) {
             if (!b.active) {
                 b.active = true; b.x = x; b.y = y;
                 b.vx = Math.cos(angle) * speed; b.vy = Math.sin(angle) * speed;
-                b.life = 80; b.damage = damage; b.trail = [];
+                b.life = 80; 
+                b.damage = damage || 10; // Защита от потери урона
+                b.trail = [];
                 sound.shoot();
                 return;
             }
@@ -167,7 +170,7 @@ class Player {
         this.maxHp = 100; this.hp = 100;
         this.level = 1; this.xp = 0; this.nextLevelXp = 100;
         
-        this.damage = 5; // Урон игрока
+        this.damage = 10; // Увеличенный урон для уверенности
         this.fireRate = 10;
         this.cooldown = 0;
         this.weaponType = 'DEFAULT';
@@ -196,13 +199,14 @@ class Player {
             const bx = this.x + Math.cos(this.angle) * gunLen;
             const by = this.y + Math.sin(this.angle) * gunLen;
 
+            // Передаем this.damage явно
             if (this.weaponType === 'SHOTGUN') {
                 bulletPool.get(bx, by, this.angle, 15, this.damage);
                 bulletPool.get(bx, by, this.angle - 0.2, 15, this.damage);
                 bulletPool.get(bx, by, this.angle + 0.2, 15, this.damage);
                 this.cooldown = 35;
             } else if (this.weaponType === 'RAPID') {
-                bulletPool.get(bx, by, this.angle, 18, this.damage * 0.7);
+                bulletPool.get(bx, by, this.angle, 18, Math.max(1, this.damage * 0.7));
                 this.cooldown = 5;
             } else {
                 bulletPool.get(bx, by, this.angle, 15, this.damage);
@@ -271,17 +275,18 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
+            // БАЛАНС
             if (typeChance < 0.2) { 
                 this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
                 this.hp = 30; this.maxHp=30; 
                 this.damage=30; this.xpReward=50; this.color='#bf00ff'; 
             } else if (typeChance < 0.5) { 
                 this.type = 'runner'; this.radius = 10; this.speed = 4; 
-                this.hp=5; this.maxHp=5; 
+                this.hp=10; this.maxHp=10; 
                 this.damage=10; this.xpReward=15; this.color='#ffaa00'; 
             } else { 
                 this.type = 'normal'; this.radius = 15; this.speed=2.0; 
-                this.hp=10; this.maxHp=10; 
+                this.hp=20; this.maxHp=20; 
                 this.damage=15; this.xpReward=20; this.color='#ff0055'; 
             }
         }
@@ -319,23 +324,18 @@ class Enemy {
         else { ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); }
         ctx.fill();
 
-        // ПОЛОСКА ЗДОРОВЬЯ (ИСПРАВЛЕНА)
+        // ПОЛОСКА ЗДОРОВЬЯ НА ВРАГАХ (ИСПРАВЛЕНА ВИЗУАЛИЗАЦИЯ)
         if (!this.isBoss) {
-            ctx.shadowBlur = 0; // Отключаем свечение для четкости бара
+            ctx.shadowBlur = 0; 
             
-            // Красный фон (показывает, сколько жизни потеряно)
+            // Фон (Красный - сколько всего было)
             ctx.fillStyle = '#550000';
             ctx.fillRect(this.x - 15, this.y - this.radius - 12, 30, 5);
             
-            // Зеленая полоска (показывает, сколько жизни осталось)
+            // Жизнь (Зеленый - сколько осталось)
             const hpPercent = Math.max(0, this.hp / this.maxHp);
             ctx.fillStyle = '#00ff00';
             ctx.fillRect(this.x - 15, this.y - this.radius - 12, 30 * hpPercent, 5);
-            
-            // Тонкая рамка (опционально, для красоты)
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 0.5;
-            ctx.strokeRect(this.x - 15, this.y - this.radius - 12, 30, 5);
         }
         ctx.restore();
     }
@@ -478,10 +478,14 @@ function animate() {
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
-            // Увеличили радиус попадания (чтобы легче попадать)
-            if (dist < enemy.radius + b.radius + 10) {
+            
+            // ВАЖНО: Увеличен радиус попадания (+15)
+            if (dist < enemy.radius + b.radius + 15) {
                 b.active = false; 
-                enemy.hp -= b.damage; 
+                // Гарантированное числовое значение урона
+                const dmg = b.damage || 10; 
+                enemy.hp -= dmg; 
+                
                 enemy.hitFlash = 3;
                 particlePool.explode(b.x, b.y, '#fff', 2);
 
