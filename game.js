@@ -33,7 +33,6 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-
 window.addEventListener('mousedown', () => { isMouseDown = true; });
 window.addEventListener('mouseup', () => { isMouseDown = false; });
 
@@ -131,7 +130,7 @@ class BulletPool {
                 b.active = true; b.x = x; b.y = y;
                 b.vx = Math.cos(angle) * speed; b.vy = Math.sin(angle) * speed;
                 b.life = 80; 
-                b.damage = 10; 
+                b.damage = damage || 10; 
                 b.trail = [];
                 sound.shoot();
                 return;
@@ -274,21 +273,18 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
-            // --- БАЛАНС ВРАГОВ (ИЗМЕНЕНО) ---
+            // БАЛАНС ЗДОРОВЬЯ (КРАТНО 10)
             if (typeChance < 0.2) { 
-                // Танк (Крупный) - 30 HP (3 попадания по 10)
                 this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
-                this.hp = 30; this.maxHp=30; 
+                this.hp = 30; this.maxHp=30; // 3 выстрела
                 this.damage=30; this.xpReward=50; this.color='#bf00ff'; 
             } else if (typeChance < 0.5) { 
-                // Бегун (Мелкий) - 10 HP (1 попадание по 10)
                 this.type = 'runner'; this.radius = 10; this.speed = 4; 
-                this.hp=10; this.maxHp=10; 
+                this.hp=10; this.maxHp=10; // 1 выстрел
                 this.damage=10; this.xpReward=15; this.color='#ffaa00'; 
             } else { 
-                // Обычный (Средний) - 20 HP (2 попадания по 10)
                 this.type = 'normal'; this.radius = 15; this.speed=2.0; 
-                this.hp=20; this.maxHp=20; 
+                this.hp=20; this.maxHp=20; // 2 выстрела
                 this.damage=15; this.xpReward=20; this.color='#ff0055'; 
             }
         }
@@ -327,7 +323,6 @@ class Enemy {
         else { ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); }
         ctx.fill();
 
-        // Полоска здоровья
         if (!this.isBoss) {
             ctx.shadowBlur = 0; 
             ctx.fillStyle = '#550000';
@@ -435,11 +430,6 @@ function animate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     bg.update(); bg.draw();
-    
-    // ВЕРСИЯ КОДА (УБРАЛ ПОСЛЕ ТЕСТА, ЧТОБЫ БЫЛО ЧИСТО)
-    // ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    // ctx.font = '12px Courier';
-    // ctx.fillText("ВЕРСИЯ: ИСПРАВЛЕНО", 10, 20);
 
     frameCount++;
     if (frameCount % 60 === 0) {
@@ -472,6 +462,7 @@ function animate() {
             document.getElementById('bossHpBar').style.width = bossP + '%';
         }
 
+        // КОЛЛИЗИЯ С ИГРОКОМ
         const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
         if (distToPlayer < player.radius + enemy.radius) {
             player.takeDamage(enemy.damage);
@@ -480,18 +471,22 @@ function animate() {
             continue;
         }
 
+        // КОЛЛИЗИЯ С ПУЛЯМИ
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             
-            const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
-            
-            if (dist < enemy.radius + b.radius + 15) {
+            // Очень простая и надежная проверка расстояния
+            const dx = b.x - enemy.x;
+            const dy = b.y - enemy.y;
+            // Условие: Дистанция < (Радиус Врага + Радиус Пули + БОНУС)
+            // БОНУС 25 гарантирует, что попадание засчитается
+            if ((dx*dx + dy*dy) < Math.pow(enemy.radius + b.radius + 25, 2)) {
                 b.active = false; 
                 
-                // УРОН ФИКСИРОВАН (10), чтобы соответствовать HP
+                // УРОН (10)
                 enemy.hp -= 10;
                 
-                enemy.hitFlash = 3;
+                enemy.hitFlash = 3; // Мигание
                 particlePool.explode(b.x, b.y, '#fff', 2);
 
                 if (enemy.hp <= 0) {
