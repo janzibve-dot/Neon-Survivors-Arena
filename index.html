@@ -11,6 +11,11 @@
 
     <div class="scanlines"></div>
     <div id="damageOverlay"></div>
+    
+    <div id="ultOverlay" style="display: none;">
+        <h1 class="cyber-glitch" style="font-size: 2.5em; color: var(--cyber-yellow);">>> СИСТЕМА ПЕРЕГРУЖЕНА <<</h1>
+        <p class="cyber-text" style="color: red; font-size: 1.5em; animation: flashText 0.2s infinite;">ДВИГАТЕЛЬ ОТКЛЮЧЕН. РАКЕТЫ АКТИВНЫ.</p>
+    </div>
 
     <div id="startScreen" class="screen cyber-panel">
         <h1 class="cyber-glitch" data-text="Neon-Survivors-Arena">Neon-Survivors-Arena</h1>
@@ -25,7 +30,6 @@
     </div>
 
     <div id="ui">
-        
         <div class="right-hud tech-panel-small">
             <div class="hud-row">SCORE: <span id="scoreValue" class="cyber-highlight">0</span></div>
             <div class="hud-row" style="color: var(--cyber-yellow);">BEST: <span id="bestScoreValue">0</span></div>
@@ -39,7 +43,6 @@
                     <div class="tech-bar-fill xp-fill" id="xpBar"></div>
                 </div>
             </div>
-
             <div class="hp-wrapper tech-panel-small">
                 <div class="bar-text cyber-text-small">HP STATUS: <span id="hpText">100/100</span></div>
                 <div class="tech-bar-container">
