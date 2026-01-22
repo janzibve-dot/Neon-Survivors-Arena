@@ -23,58 +23,44 @@ const MAX_ENEMIES = 50;
 // Управление
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+let isMouseDown = false; // Флаг: зажата ли мышка
 
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    // Пауза
     if ((e.code === 'Escape' || e.code === 'KeyP') && (currentState === STATE.PLAYING || currentState === STATE.PAUSE)) {
         togglePause();
     }
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
+
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-window.addEventListener('mousedown', () => {
-    if (currentState === STATE.PLAYING) player.tryShoot();
-});
+
+// ЛОГИКА БЕСКОНЕЧНОЙ СТРЕЛЬБЫ
+window.addEventListener('mousedown', () => { isMouseDown = true; });
+window.addEventListener('mouseup', () => { isMouseDown = false; });
 
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('resumeBtn').addEventListener('click', togglePause);
 
-// --- 2. ЗВУКОВОЙ ДВИЖОК (СИНТЕЗАТОР) ---
+// --- 2. ЗВУКИ ---
 class SoundManager {
-    constructor() {
-        this.ctx = null;
-    }
-
-    init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-    }
-
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
     playTone(freq, type, duration, vol = 0.1) {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        
-        osc.type = type; // 'sine', 'square', 'sawtooth', 'triangle'
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        
+        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + duration);
     }
-
-    shoot() { this.playTone(600 - Math.random() * 100, 'square', 0.1, 0.05); }
-    hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
+    shoot() { this.playTone(400 + Math.random()*200, 'square', 0.1, 0.03); }
+    hit() { this.playTone(100, 'sawtooth', 0.1, 0.05); }
     enemyDeath() { this.playTone(50, 'sawtooth', 0.2, 0.1); }
     bossSpawn() { this.playTone(30, 'square', 2.0, 0.2); }
     levelUp() { 
-        // Трезвучие
         setTimeout(() => this.playTone(440, 'sine', 0.3, 0.1), 0);
         setTimeout(() => this.playTone(554, 'sine', 0.3, 0.1), 100);
         setTimeout(() => this.playTone(659, 'sine', 0.5, 0.1), 200);
@@ -136,7 +122,6 @@ class ParticlePool {
 }
 const particlePool = new ParticlePool(500);
 
-// --- 4. ПУЛИ ---
 class BulletPool {
     constructor(size) {
         this.pool = [];
@@ -148,7 +133,7 @@ class BulletPool {
                 b.active = true; b.x = x; b.y = y;
                 b.vx = Math.cos(angle) * speed; b.vy = Math.sin(angle) * speed;
                 b.life = 80; b.damage = damage; b.trail = [];
-                sound.shoot(); // Звук выстрела
+                sound.shoot();
                 return;
             }
         }
@@ -182,10 +167,12 @@ class Player {
         this.color = '#00ffcc'; this.speed = 5; this.angle = 0;
         this.maxHp = 100; this.hp = 100;
         this.level = 1; this.xp = 0; this.nextLevelXp = 100;
-        this.damage = 10;
-        this.fireRate = 15; this.cooldown = 0;
         
-        this.weaponType = 'DEFAULT'; // 'DEFAULT', 'SHOTGUN', 'RAPID'
+        // БАЛАНС: Начальный урон снижен до 5, чтобы враги не умирали сразу
+        this.damage = 5;
+        this.fireRate = 10; // Чем меньше, тем быстрее (было 15)
+        this.cooldown = 0;
+        this.weaponType = 'DEFAULT';
         this.hitTimer = 0; this.muzzleFlash = 0;
     }
     update() {
@@ -193,12 +180,17 @@ class Player {
         if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
+        
         this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
         this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+        
         if (this.hitTimer > 0) this.hitTimer--;
         if (this.cooldown > 0) this.cooldown--;
         if (this.muzzleFlash > 0) this.muzzleFlash--;
+
+        // БЕСКОНЕЧНАЯ СТРЕЛЬБА: Если мышь зажата - стреляем
+        if (isMouseDown) this.tryShoot();
     }
     tryShoot() {
         if (this.cooldown <= 0) {
@@ -206,17 +198,15 @@ class Player {
             const bx = this.x + Math.cos(this.angle) * gunLen;
             const by = this.y + Math.sin(this.angle) * gunLen;
 
-            // ЛОГИКА ОРУЖИЯ
             if (this.weaponType === 'SHOTGUN') {
                 bulletPool.get(bx, by, this.angle, 15, this.damage);
                 bulletPool.get(bx, by, this.angle - 0.2, 15, this.damage);
                 bulletPool.get(bx, by, this.angle + 0.2, 15, this.damage);
-                this.cooldown = 35; // Медленнее
+                this.cooldown = 35;
             } else if (this.weaponType === 'RAPID') {
                 bulletPool.get(bx, by, this.angle, 18, this.damage * 0.7);
-                this.cooldown = 6; // Очень быстро
+                this.cooldown = 5;
             } else {
-                // DEFAULT
                 bulletPool.get(bx, by, this.angle, 15, this.damage);
                 this.cooldown = this.fireRate;
             }
@@ -229,6 +219,7 @@ class Player {
             this.xp -= this.nextLevelXp;
             this.level++;
             this.nextLevelXp = Math.floor(this.nextLevelXp * 1.2);
+            isMouseDown = false; // Сброс стрельбы чтобы не стрелять в меню
             sound.levelUp();
             currentState = STATE.LEVEL_UP;
             showUpgradeScreen();
@@ -257,7 +248,7 @@ class Player {
     }
 }
 
-// --- 6. ВРАГИ И БОСС ---
+// --- 6. ВРАГИ ---
 let bossActive = false;
 
 class Enemy {
@@ -266,18 +257,14 @@ class Enemy {
         this.waitTimer = 60; this.hitFlash = 0;
         
         if (isBoss) {
-            // ПАРАМЕТРЫ БОССА
             sound.bossSpawn();
             this.type = 'boss'; this.radius = 60; this.speed = 0.8;
-            this.maxHp = 500 + (player.level * 50); 
-            this.hp = this.maxHp;
-            this.damage = 50; this.xpReward = 500;
-            this.color = '#ff0000';
-            this.x = canvas.width / 2; this.y = -100; // Спавн сверху
+            this.maxHp = 500 + (player.level * 50); this.hp = this.maxHp;
+            this.damage = 50; this.xpReward = 500; this.color = '#ff0000';
+            this.x = canvas.width / 2; this.y = -100;
             document.getElementById('bossContainer').style.display = 'block';
             bossActive = true;
         } else {
-            // Обычные враги
             const side = Math.floor(Math.random() * 4);
             const typeChance = Math.random();
             const offset = 50;
@@ -286,18 +273,30 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
-            if (typeChance < 0.2) { this.type = 'tank'; this.radius = 25; this.speed = 1.2; this.hp = 6; this.maxHp=6; this.damage=30; this.xpReward=50; this.color='#bf00ff'; }
-            else if (typeChance < 0.5) { this.type = 'runner'; this.radius = 10; this.speed = 4; this.hp=1; this.maxHp=1; this.damage=10; this.xpReward=15; this.color='#ffaa00'; }
-            else { this.type = 'normal'; this.radius = 15; this.speed=2.0; this.hp=2; this.maxHp=2; this.damage=15; this.xpReward=20; this.color='#ff0055'; }
+            // БАЛАНС: Увеличиваем HP врагов, чтобы по ним надо было стрелять несколько раз
+            if (typeChance < 0.2) { 
+                // Танк
+                this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
+                this.hp = 30; this.maxHp=30; // Было 6, стало 30
+                this.damage=30; this.xpReward=50; this.color='#bf00ff'; 
+            } else if (typeChance < 0.5) { 
+                // Бегун
+                this.type = 'runner'; this.radius = 10; this.speed = 4; 
+                this.hp=5; this.maxHp=5; // Было 1, стало 5
+                this.damage=10; this.xpReward=15; this.color='#ffaa00'; 
+            } else { 
+                // Обычный
+                this.type = 'normal'; this.radius = 15; this.speed=2.0; 
+                this.hp=10; this.maxHp=10; // Было 2, стало 10
+                this.damage=15; this.xpReward=20; this.color='#ff0055'; 
+            }
         }
     }
     update(player) {
         if (this.hitFlash > 0) this.hitFlash--;
         if (this.waitTimer > 0) {
             this.waitTimer--;
-            // Босс выходит медленно сверху
             if (this.isBoss) { this.y += 1; return; }
-            
             const a = Math.atan2(player.y - this.y, player.x - this.x);
             this.x += Math.cos(a) * 0.5; this.y += Math.sin(a) * 0.5;
             return;
@@ -314,7 +313,6 @@ class Enemy {
         
         ctx.beginPath();
         if (this.isBoss) {
-            // Босс - Шестиугольник
             for (let i = 0; i < 6; i++) {
                 ctx.lineTo(this.x + this.radius * Math.cos(i * 2 * Math.PI / 6), this.y + this.radius * Math.sin(i * 2 * Math.PI / 6));
             }
@@ -327,28 +325,35 @@ class Enemy {
         else { ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); }
         ctx.fill();
 
-        // Полоска здоровья
-        if (this.hp < this.maxHp && !this.isBoss) {
-            ctx.shadowBlur = 0; ctx.fillStyle = 'red'; ctx.fillRect(this.x-15, this.y-this.radius-10, 30, 4);
-            ctx.fillStyle = '#0f0'; ctx.fillRect(this.x-15, this.y-this.radius-10, 30 * (this.hp/this.maxHp), 4);
+        // ПОЛОСКА ЗДОРОВЬЯ НА ВРАГАХ
+        // Рисуем всегда, если враг не босс (у босса своя полоска сверху)
+        if (!this.isBoss) {
+            // Фон полоски
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30, 4);
+            
+            // Сама жизнь (Зеленая)
+            ctx.fillStyle = '#00ff00';
+            const hpPercent = Math.max(0, this.hp / this.maxHp);
+            ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30 * hpPercent, 4);
         }
         ctx.restore();
     }
 }
 
-// --- 7. ЛОГИКА ИГРЫ ---
+// --- 7. ЛОГИКА ---
 const player = new Player();
 let enemies = [];
 const upgradesList = [
-    { title: "УРОН +20%", desc: "Усилитель плазмы", apply: () => player.damage = Math.floor(player.damage * 1.2) },
+    { title: "УРОН +20%", desc: "Усилитель плазмы", apply: () => player.damage = Math.floor(player.damage * 1.2) + 2 },
     { title: "СКОРОСТЬ +15%", desc: "Охлаждение ствола", apply: () => player.fireRate = Math.max(5, player.fireRate - 2) },
     { title: "ЛЕЧЕНИЕ", desc: "Ремонт корпуса", apply: () => player.hp = player.maxHp },
-    { title: "ДРОБОВИК", desc: "Тройной выстрел (Новое оружие)", apply: () => player.weaponType = 'SHOTGUN' },
-    { title: "АВТОМАТ", desc: "Скорострельный режим (Новое оружие)", apply: () => player.weaponType = 'RAPID' }
+    { title: "ДРОБОВИК", desc: "Тройной выстрел", apply: () => player.weaponType = 'SHOTGUN' },
+    { title: "АВТОМАТ", desc: "Скорострельный режим", apply: () => player.weaponType = 'RAPID' }
 ];
 
 function startGame() {
-    sound.init(); // Активация звука
+    sound.init();
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     document.getElementById('gameOverScreen').style.display = 'none';
@@ -389,7 +394,6 @@ function showUpgradeScreen() {
     const container = document.getElementById('upgradeContainer');
     container.innerHTML = '';
     document.getElementById('levelUpScreen').style.display = 'flex';
-    // Перемешиваем и берем 3
     const shuffled = upgradesList.sort(() => 0.5 - Math.random());
     for (let i = 0; i < 3; i++) {
         const u = shuffled[i];
@@ -436,15 +440,13 @@ function animate() {
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
-        if (scoreTime % 60 === 0 && !bossActive) {
-            // СПАВН БОССА
+        if (scoreTime % 60 === 0 && !bossActive && scoreTime > 0) {
             enemies.push(new Enemy(true));
         }
         if (scoreTime % 10 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
 
     spawnTimer++;
-    // Спавним врагов только если нет босса
     if (spawnTimer >= spawnInterval && enemies.length < MAX_ENEMIES && !bossActive) {
         enemies.push(new Enemy());
         spawnTimer = 0;
@@ -460,7 +462,6 @@ function animate() {
         enemy.update(player);
         enemy.draw();
 
-        // Обновление UI Босса
         if (enemy.isBoss) {
             const bossP = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
             document.getElementById('bossHpBar').style.width = bossP + '%';
@@ -470,15 +471,18 @@ function animate() {
         if (distToPlayer < player.radius + enemy.radius) {
             player.takeDamage(enemy.damage);
             particlePool.explode(enemy.x, enemy.y, enemy.color, 5);
-            if (!enemy.isBoss) enemies.splice(i, 1); // Босс не исчезает при касании
+            if (!enemy.isBoss) enemies.splice(i, 1);
             continue;
         }
 
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
+            // Чуть увеличили радиус попадания (+5 пикселей)
             if (dist < enemy.radius + b.radius + 5) {
-                b.active = false; enemy.hp -= b.damage; enemy.hitFlash = 3;
+                b.active = false; 
+                enemy.hp -= b.damage; 
+                enemy.hitFlash = 3;
                 particlePool.explode(b.x, b.y, '#fff', 2);
 
                 if (enemy.hp <= 0) {
