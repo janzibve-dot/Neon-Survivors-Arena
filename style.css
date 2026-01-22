@@ -34,9 +34,11 @@ canvas { display: block; cursor: none; }
 .cyber-highlight { color: var(--cyber-yellow); font-weight: bold; font-size: 1.2em; }
 .alert-text { color: var(--cyber-alert) !important; text-shadow: 2px 2px 0px #000, -2px -2px 0px var(--cyber-yellow) !important; }
 
-/* Глитч */
+/* Глитч (УМЕНЬШЕН РАЗМЕР ШРИФТА) */
 .cyber-glitch {
-    font-family: var(--font-header); font-size: 4em; font-weight: 900; position: relative; color: var(--cyber-cyan);
+    font-family: var(--font-header); 
+    font-size: 3em; /* Уменьшили с 4em, чтобы влезло длинное название */
+    font-weight: 900; position: relative; color: var(--cyber-cyan);
     text-shadow: 3px 3px 0px var(--cyber-magenta), -3px -3px 0px var(--cyber-yellow);
     animation: glitchSkew 1s infinite linear alternate-reverse;
 }
