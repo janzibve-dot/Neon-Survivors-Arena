@@ -1,44 +1,107 @@
-/* ОБЩИЕ НАСТРОЙКИ */
+/* --- ОСНОВНОЕ --- */
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #111;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #050505; /* Глубокий черный */
+    font-family: 'Courier New', Courier, monospace; /* Техно-шрифт */
     color: white;
-    user-select: none; /* Запрет выделения текста */
+    user-select: none;
 }
 
 canvas {
     display: block;
-    cursor: crosshair; /* Вернул прицел, так удобнее */
+    cursor: none; /* Убираем курсор системы, рисуем свой */
 }
 
-/* ИНТЕРФЕЙС (HUD) */
+/* Красная вспышка при уроне */
+#damageOverlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(circle, transparent 50%, red 150%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+    z-index: 5;
+}
+
+/* --- ИНТЕРФЕЙС --- */
 #ui {
     position: absolute;
     top: 20px;
     left: 20px;
-    font-size: 20px;
-    font-weight: bold;
+    right: 20px;
     pointer-events: none;
-    line-height: 1.5;
-    text-shadow: 0 0 5px #fff;
-    display: none; /* Скрыт в главном меню */
+    display: none;
 }
 
-.stat-row span {
-    color: #f1c40f;
+.top-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
 }
 
-#hpValue { color: #e74c3c; }
-#levelValue { color: #2ecc71; }
+.level-box {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ffcc;
+    text-shadow: 0 0 10px #00ffcc;
+}
 
-/* ЭКРАНЫ (Меню, Лвл-ап, Гейм Овер) */
+/* Полоски (Бары) */
+.bar-container {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    height: 15px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    flex-grow: 1; /* Растягивается */
+}
+
+.hp-container {
+    width: 300px; /* Фиксированная ширина для HP */
+    height: 25px;
+    flex-grow: 0;
+    margin-bottom: 10px;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.2s ease-out;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+}
+
+.xp-fill { background: linear-gradient(90deg, #00b09b, #96c93d); box-shadow: 0 0 10px #96c93d; }
+.hp-fill { background: linear-gradient(90deg, #cb2d3e, #ef473a); box-shadow: 0 0 10px #ef473a; }
+
+.bar-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 2px;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    z-index: 2;
+}
+
+.stats {
+    font-size: 18px;
+    color: #aaa;
+    margin-top: 10px;
+}
+
+.stats span { color: white; text-shadow: 0 0 5px white; }
+
+/* --- ЭКРАНЫ --- */
 .screen {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(5, 5, 5, 0.9);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -46,71 +109,60 @@ canvas {
     z-index: 10;
 }
 
-h1 {
+.neon-text {
     font-size: 4em;
-    color: #3498db;
-    text-shadow: 0 0 20px #3498db;
-    margin-bottom: 20px;
+    color: #fff;
+    text-shadow: 
+        0 0 5px #fff,
+        0 0 10px #fff,
+        0 0 20px #00ffcc,
+        0 0 40px #00ffcc;
+    animation: pulsate 2s infinite alternate;
 }
 
-h2 {
-    font-size: 3em;
-    color: #f1c40f;
-    text-shadow: 0 0 20px #f1c40f;
+@keyframes pulsate {
+    100% { text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #00ffcc; }
+    0% { text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 10px #00ffcc; }
 }
 
 /* КНОПКИ */
 button {
-    padding: 15px 40px;
-    font-size: 24px;
-    background-color: #27ae60;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    box-shadow: 0 0 15px #27ae60;
-    transition: transform 0.2s, background 0.2s;
+    margin-top: 30px;
+    padding: 15px 50px;
+    font-size: 20px;
+    font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
+    color: #050505;
+    background: #00ffcc;
+    border: none;
+    border-radius: 2px;
+    box-shadow: 0 0 15px #00ffcc;
+    cursor: pointer;
+    transition: 0.2s;
 }
 
 button:hover {
-    background-color: #2ecc71;
+    background: #fff;
+    box-shadow: 0 0 25px #fff;
     transform: scale(1.05);
 }
 
-/* КАРТОЧКИ УЛУЧШЕНИЙ */
-#upgradeContainer {
-    display: flex;
-    gap: 20px;
-    margin-top: 30px;
-}
-
+/* Карточки апгрейдов */
+#upgradeContainer { display: flex; gap: 20px; margin-top: 30px; }
 .upgrade-card {
-    background: #2c3e50;
-    border: 2px solid #3498db;
+    background: rgba(0, 255, 204, 0.1);
+    border: 1px solid #00ffcc;
     padding: 20px;
     width: 200px;
-    border-radius: 10px;
     cursor: pointer;
     text-align: center;
     transition: 0.3s;
-    box-shadow: 0 0 10px #3498db;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
 }
-
 .upgrade-card:hover {
-    background: #34495e;
-    transform: translateY(-10px);
-    box-shadow: 0 0 25px #3498db;
+    background: #00ffcc;
+    color: black;
+    box-shadow: 0 0 30px #00ffcc;
 }
-
-.upgrade-title {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #f1c40f;
-    margin-bottom: 10px;
-}
-
-.upgrade-desc {
-    font-size: 0.9em;
-    color: #bdc3c7;
-}
+.upgrade-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
+.upgrade-desc { font-size: 0.9em; opacity: 0.8; }
