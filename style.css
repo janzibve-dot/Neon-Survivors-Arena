@@ -1,11 +1,57 @@
 
-/* Убираем стандартные отступы браузера */
+/* Базовые настройки страницы */
 body {
     margin: 0;
-    overflow: hidden; /* Скрываем полосы прокрутки, если что-то вылезет */
-    background-color: #2c3e50; /* Темно-синий фон (приятно глазу) */
+    overflow: hidden;
+    background-color: #2c3e50; /* Темный фон */
+    font-family: Arial, sans-serif; /* Простой шрифт */
 }
 
 canvas {
-    display: block; /* Убираем нижний отступ, свойственный строчным элементам */
+    display: block;
+}
+
+/* Интерфейс в левом верхнем углу */
+#ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none; /* Чтобы мышь сквозь текст нажимала на игру */
+}
+
+/* Экран проигрыша */
+#gameOverScreen {
+    display: none; /* Скрыт по умолчанию */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Центрирование */
+    background: rgba(0, 0, 0, 0.85); /* Полупрозрачный черный фон */
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    border: 2px solid #e74c3c; /* Красная рамка */
+}
+
+h1 {
+    margin-top: 0;
+    color: #e74c3c;
+}
+
+button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #2ecc71;
 }
