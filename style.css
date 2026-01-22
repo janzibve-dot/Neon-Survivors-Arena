@@ -3,15 +3,15 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #2c3e50; /* Темный фон */
-    font-family: Arial, sans-serif; /* Простой шрифт */
+    background-color: #2c3e50;
+    font-family: Arial, sans-serif;
 }
 
 canvas {
     display: block;
 }
 
-/* Интерфейс в левом верхнем углу */
+/* Интерфейс */
 #ui {
     position: absolute;
     top: 20px;
@@ -19,22 +19,29 @@ canvas {
     color: white;
     font-size: 24px;
     font-weight: bold;
-    pointer-events: none; /* Чтобы мышь сквозь текст нажимала на игру */
+    pointer-events: none;
+    line-height: 1.5;
+}
+
+/* Цвет для цифры XP */
+#xpValue {
+    color: #e74c3c; /* Красный цвет */
 }
 
 /* Экран проигрыша */
 #gameOverScreen {
-    display: none; /* Скрыт по умолчанию */
+    display: none;
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%); /* Центрирование */
-    background: rgba(0, 0, 0, 0.85); /* Полупрозрачный черный фон */
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
     padding: 40px;
     border-radius: 15px;
     text-align: center;
     color: white;
-    border: 2px solid #e74c3c; /* Красная рамка */
+    border: 2px solid #e74c3c;
+    min-width: 200px;
 }
 
 h1 {
