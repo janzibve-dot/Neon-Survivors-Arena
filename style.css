@@ -1,82 +1,116 @@
-/* Базовые настройки */
+/* ОБЩИЕ НАСТРОЙКИ */
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #111; /* Почти черный фон для неона */
-    /* Более современный стек шрифтов */
+    background-color: #111;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    user-select: none; /* Запрет выделения текста */
 }
 
 canvas {
     display: block;
-    cursor: default;
+    cursor: crosshair; /* Вернул прицел, так удобнее */
 }
 
-/* Интерфейс */
+/* ИНТЕРФЕЙС (HUD) */
 #ui {
     position: absolute;
     top: 20px;
     left: 20px;
-    color: white;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     pointer-events: none;
-    line-height: 1.6;
-    /* Неоновое свечение текста */
-    text-shadow: 0 0 5px #fff, 0 0 10px #fff;
+    line-height: 1.5;
+    text-shadow: 0 0 5px #fff;
+    display: none; /* Скрыт в главном меню */
 }
 
-/* Цвета для значений с дополнительным свечением */
-#xpValue { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; }
-#scoreValue { color: #f1c40f; text-shadow: 0 0 10px #f1c40f; }
-#timer { color: #3498db; text-shadow: 0 0 10px #3498db; }
+.stat-row span {
+    color: #f1c40f;
+}
 
-/* Экран проигрыша */
-#gameOverScreen {
-    display: none;
+#hpValue { color: #e74c3c; }
+#levelValue { color: #2ecc71; }
+
+/* ЭКРАНЫ (Меню, Лвл-ап, Гейм Овер) */
+.screen {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    /* Полупрозрачный черный фон */
-    background: rgba(0, 0, 0, 0.9);
-    padding: 40px;
-    border-radius: 15px;
-    text-align: center;
-    color: white;
-    /* Неоновая рамка */
-    border: 3px solid #e74c3c;
-    box-shadow: 0 0 20px #e74c3c;
-    min-width: 250px;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
 }
 
 h1 {
-    margin-top: 0;
-    color: #e74c3c;
-    text-shadow: 0 0 15px #e74c3c;
+    font-size: 4em;
+    color: #3498db;
+    text-shadow: 0 0 20px #3498db;
+    margin-bottom: 20px;
+}
+
+h2 {
     font-size: 3em;
+    color: #f1c40f;
+    text-shadow: 0 0 20px #f1c40f;
 }
 
-p {
-    font-size: 1.2em;
-}
-
+/* КНОПКИ */
 button {
     padding: 15px 40px;
-    font-size: 20px;
+    font-size: 24px;
     background-color: #27ae60;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-top: 25px;
+    box-shadow: 0 0 15px #27ae60;
+    transition: transform 0.2s, background 0.2s;
     font-weight: bold;
-    /* Свечение кнопки */
-    box-shadow: 0 0 10px #27ae60;
-    transition: 0.3s;
 }
 
 button:hover {
     background-color: #2ecc71;
-    box-shadow: 0 0 20px #2ecc71;
+    transform: scale(1.05);
+}
+
+/* КАРТОЧКИ УЛУЧШЕНИЙ */
+#upgradeContainer {
+    display: flex;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.upgrade-card {
+    background: #2c3e50;
+    border: 2px solid #3498db;
+    padding: 20px;
+    width: 200px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.3s;
+    box-shadow: 0 0 10px #3498db;
+}
+
+.upgrade-card:hover {
+    background: #34495e;
+    transform: translateY(-10px);
+    box-shadow: 0 0 25px #3498db;
+}
+
+.upgrade-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #f1c40f;
+    margin-bottom: 10px;
+}
+
+.upgrade-desc {
+    font-size: 0.9em;
+    color: #bdc3c7;
 }
