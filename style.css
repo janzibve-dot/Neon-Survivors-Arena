@@ -9,10 +9,7 @@
     --font-tech: 'Share Tech Mono', monospace;
 }
 
-body {
-    margin: 0; overflow: hidden; background-color: #020205;
-    font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none;
-}
+body { margin: 0; overflow: hidden; background-color: #020205; font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none; }
 canvas { display: block; cursor: none; }
 
 .scanlines {
@@ -24,6 +21,32 @@ canvas { display: block; cursor: none; }
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: repeating-linear-gradient(0deg, rgba(255, 0, 0, 0.1) 0px, rgba(255, 0, 0, 0.1) 2px, transparent 2px, transparent 4px);
     box-shadow: inset 0 0 100px var(--cyber-alert); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; mix-blend-mode: overlay;
+}
+
+/* ТАЙМЕР БОССА */
+#bossTimerContainer {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    font-size: 24px; font-weight: bold; color: var(--cyber-alert);
+    text-shadow: 0 0 10px red; z-index: 15;
+    background: rgba(0,0,0,0.7); padding: 5px 20px; border: 1px solid var(--cyber-alert);
+}
+
+/* УВЕДОМЛЕНИЕ ОБ УРОВНЕ */
+#stageAnnouncement {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 70; background: rgba(0,0,0,0.5); pointer-events: none;
+}
+.stage-box {
+    background: rgba(0, 0, 0, 0.9); padding: 40px 80px;
+    border: 4px solid var(--cyber-cyan);
+    box-shadow: 0 0 30px var(--cyber-cyan), inset 0 0 30px var(--cyber-cyan);
+    text-align: center;
+    animation: pulsateBox 1s infinite alternate;
+}
+@keyframes pulsateBox {
+    0% { transform: scale(1); box-shadow: 0 0 30px var(--cyber-cyan); border-color: var(--cyber-cyan); }
+    100% { transform: scale(1.05); box-shadow: 0 0 50px var(--cyber-magenta); border-color: var(--cyber-magenta); }
 }
 
 /* Оверлей УЛЬТЫ */
@@ -69,7 +92,7 @@ canvas { display: block; cursor: none; }
 .right-hud { position: absolute; top: 20px; right: 20px; text-align: right; border-left: none; border-right: 4px solid var(--cyber-magenta); }
 .hud-row { margin-bottom: 5px; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
 .hp-wrapper { width: 320px; margin-top: 10px; }
-#bossContainer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
+#bossContainer { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
 .boss-label { animation: flashText 1s infinite alternate; }
 @keyframes flashText { from { opacity: 0.6; color: var(--cyber-alert); } to { opacity: 1; color: white; } }
 
