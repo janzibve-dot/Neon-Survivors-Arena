@@ -14,26 +14,22 @@ window.addEventListener('resize', resize);
 let isGameOver = false;
 let frameCount = 0;
 let scoreTime = 0;
-let killScore = 0; // Очки
+let killScore = 0;
 
 // --- 2. УПРАВЛЕНИЕ ---
 const keys = {};
-// Координаты мыши
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
 
-// Следим за движением мыши постоянно
 window.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
 });
 
-// Стрельба по клику
 window.addEventListener('mousedown', (e) => {
     if (isGameOver) return;
-    // Стреляем в том направлении, куда смотрит игрок (this.angle)
     bullets.push(new Bullet(player.x, player.y, player.angle));
 });
 
@@ -49,58 +45,46 @@ class Player {
         this.color = '#3498db'; // Синий
         this.speed = 5;
         this.xp = 100;
-        this.angle = 0; // Куда смотрит игрок
-        this.hitTimer = 0; // Таймер для красного мигания
+        this.angle = 0;
+        this.hitTimer = 0;
     }
 
     update() {
-        // Движение WASD
+        // Движение
         if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
         if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
 
-        // Границы экрана
+        // Границы
         if (this.x < this.radius) this.x = this.radius;
         if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
         if (this.y < this.radius) this.y = this.radius;
         if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
 
-        // Поворот к мышке (вычисляем угол)
+        // Поворот
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
 
-        // Уменьшаем таймер удара (если он был)
-        if (this.hitTimer > 0) {
-            this.hitTimer--;
-        }
+        // Таймер удара
+        if (this.hitTimer > 0) this.hitTimer--;
     }
 
     draw() {
-        // Сохраняем текущие настройки рисования
         ctx.save();
-        
-        // Перемещаем "центр мира" в координаты игрока и поворачиваем
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Определяем цвет (Красный, если ударили, иначе Синий)
         if (this.hitTimer > 0) {
-            ctx.fillStyle = '#e74c3c'; // Красный (пульсация)
+            ctx.fillStyle = '#e74c3c'; // Красный при ударе
         } else {
             ctx.fillStyle = this.color;
         }
 
         ctx.beginPath();
-        // Рисуем тело (круг)
-        // Координаты 0, 0, потому что мы уже сместили ctx.translate
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
-
-        // Рисуем пушку (прямоугольник), чтобы видеть направление
         ctx.rect(0, -5, this.radius + 10, 10);
         ctx.fill();
-
-        // Восстанавливаем настройки, чтобы не сломать отрисовку остального
         ctx.restore();
     }
 }
@@ -131,14 +115,66 @@ class Bullet {
     }
 }
 
-// ВРАГ
+// АПТЕЧКА (Новый класс)
+class HealthPack {
+    constructor() {
+        // Спавнится в случайном месте экрана
+        this.x = Math.random() * (canvas.width - 40) + 20;
+        this.y = Math.random() * (canvas.height - 40) + 20;
+        this.radius = 12;
+        this.color = '#2ecc71'; // Зеленый
+    }
+
+    draw() {
+        ctx.beginPath();
+        // Рисуем крестик или квадратик
+        ctx.rect(this.x - 10, this.y - 10, 20, 20);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        
+        // Белый крест внутри для красоты
+        ctx.fillStyle = 'white';
+        ctx.fillRect(this.x - 3, this.y - 8, 6, 16);
+        ctx.fillRect(this.x - 8, this.y - 3, 16, 6);
+        ctx.closePath();
+    }
+}
+
+// ВРАГ (Обновленный класс)
 class Enemy {
     constructor() {
-        const side = Math.floor(Math.random() * 4); 
-        this.radius = 15;
-        this.speed = 2; 
-        this.color = '#e74c3c';
+        const side = Math.floor(Math.random() * 4);
+        
+        // Случайный выбор типа врага
+        const typeChance = Math.random(); // Число от 0.0 до 1.0
 
+        if (typeChance < 0.2) { 
+            // 20% шанс - ТАНК (Фиолетовый)
+            this.type = 'tank';
+            this.radius = 25;     // Большой
+            this.speed = 1.5;     // Медленный
+            this.hp = 3;          // 3 жизни
+            this.damage = 40;     // Больно бьет
+            this.color = '#8e44ad';
+        } else if (typeChance < 0.5) { 
+            // 30% шанс - БЕГУН (Оранжевый)
+            this.type = 'runner';
+            this.radius = 10;     // Маленький
+            this.speed = 4;       // Быстрый
+            this.hp = 1;          // 1 жизнь
+            this.damage = 10;     // Слабо бьет
+            this.color = '#e67e22';
+        } else { 
+            // 50% шанс - ОБЫЧНЫЙ (Красный)
+            this.type = 'normal';
+            this.radius = 15;
+            this.speed = 2.5;
+            this.hp = 1;
+            this.damage = 20;
+            this.color = '#e74c3c';
+        }
+
+        // Спавн за краем экрана
         if (side === 0) { this.x = Math.random() * canvas.width; this.y = -this.radius; }
         else if (side === 1) { this.x = canvas.width + this.radius; this.y = Math.random() * canvas.height; }
         else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + this.radius; }
@@ -155,9 +191,13 @@ class Enemy {
 
     draw() {
         ctx.beginPath();
-        ctx.rect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
+        // Обводка, чтобы видеть границы лучше
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.stroke();
         ctx.closePath();
     }
 }
@@ -166,6 +206,7 @@ class Enemy {
 const player = new Player();
 const enemies = [];
 const bullets = [];
+const healthPacks = []; // Массив для аптечек
 
 // --- 5. КОНЕЦ ИГРЫ ---
 function gameOver() {
@@ -184,20 +225,36 @@ function animate() {
 
     frameCount++;
 
-    // Таймер
+    // Таймер и Спавн Врагов
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
+        enemies.push(new Enemy());
     }
 
-    // Спавн врагов
-    if (frameCount % 60 === 0) {
-        enemies.push(new Enemy());
+    // Спавн Аптечки (редко, каждые 15 секунд)
+    if (frameCount % 900 === 0) { 
+        healthPacks.push(new HealthPack());
     }
 
     // Игрок
     player.update();
     player.draw();
+
+    // Аптечки
+    for (let i = healthPacks.length - 1; i >= 0; i--) {
+        const pack = healthPacks[i];
+        pack.draw();
+
+        // Проверка: Игрок подобрал аптечку?
+        const dist = Math.hypot(player.x - pack.x, player.y - pack.y);
+        if (dist < player.radius + pack.radius) {
+            // Лечим, но не больше 100
+            player.xp = Math.min(player.xp + 20, 100);
+            document.getElementById('xpValue').innerText = player.xp;
+            healthPacks.splice(i, 1); // Удаляем аптечку
+        }
+    }
 
     // Пули
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -219,10 +276,10 @@ function animate() {
         // 1. Враг коснулся Игрока
         const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
         if (distToPlayer < player.radius + enemy.radius) {
-            player.xp -= 20;
-            player.hitTimer = 10; // ВКЛЮЧАЕМ КРАСНЫЙ ЦВЕТ на 10 кадров
-            
+            player.xp -= enemy.damage; // Урон зависит от типа врага
+            player.hitTimer = 10;
             document.getElementById('xpValue').innerText = player.xp;
+            
             enemies.splice(i, 1);
             if (player.xp <= 0) gameOver();
             continue;
@@ -234,11 +291,17 @@ function animate() {
             const distToBullet = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
 
             if (distToBullet < enemy.radius + bullet.radius) {
-                enemies.splice(i, 1);
-                bullets.splice(j, 1);
-                killScore++; // Одно очко
-                document.getElementById('scoreValue').innerText = killScore;
-                break; 
+                // Пуля попала!
+                bullets.splice(j, 1); // Пуля исчезает
+                enemy.hp--; // Отнимаем жизнь у врага
+
+                // Если у врага кончились жизни (для Танка это важно)
+                if (enemy.hp <= 0) {
+                    enemies.splice(i, 1);
+                    killScore++;
+                    document.getElementById('scoreValue').innerText = killScore;
+                }
+                break;
             }
         }
     }
