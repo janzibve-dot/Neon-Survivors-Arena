@@ -15,7 +15,6 @@ body {
 }
 canvas { display: block; cursor: none; }
 
-/* Эффекты монитора */
 .scanlines {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
@@ -27,6 +26,14 @@ canvas { display: block; cursor: none; }
     box-shadow: inset 0 0 100px var(--cyber-alert); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; mix-blend-mode: overlay;
 }
 
+/* Оверлей УЛЬТЫ */
+#ultOverlay {
+    position: absolute; top: 20%; left: 0; width: 100%; 
+    text-align: center; pointer-events: none; z-index: 60;
+    background: rgba(0, 0, 0, 0.7); padding: 20px 0;
+    border-top: 2px solid var(--cyber-yellow); border-bottom: 2px solid var(--cyber-yellow);
+}
+
 /* --- ТИПОГРАФИКА --- */
 .cyber-text { font-family: var(--font-header); letter-spacing: 2px; text-transform: uppercase; }
 .cyber-text-small { font-size: 14px; letter-spacing: 1px; opacity: 0.8; }
@@ -34,10 +41,8 @@ canvas { display: block; cursor: none; }
 .cyber-highlight { color: var(--cyber-yellow); font-weight: bold; font-size: 1.2em; }
 .alert-text { color: var(--cyber-alert) !important; text-shadow: 2px 2px 0px #000, -2px -2px 0px var(--cyber-yellow) !important; }
 
-/* Глитч (УМЕНЬШЕН РАЗМЕР ШРИФТА) */
 .cyber-glitch {
-    font-family: var(--font-header); 
-    font-size: 3em; /* Уменьшили с 4em, чтобы влезло длинное название */
+    font-family: var(--font-header); font-size: 3em; 
     font-weight: 900; position: relative; color: var(--cyber-cyan);
     text-shadow: 3px 3px 0px var(--cyber-magenta), -3px -3px 0px var(--cyber-yellow);
     animation: glitchSkew 1s infinite linear alternate-reverse;
@@ -59,20 +64,15 @@ canvas { display: block; cursor: none; }
     padding: 10px 15px; clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
 }
 
-/* --- HUD LAYOUT --- */
 #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
-
 .left-hud { position: absolute; top: 20px; left: 20px; }
 .right-hud { position: absolute; top: 20px; right: 20px; text-align: right; border-left: none; border-right: 4px solid var(--cyber-magenta); }
 .hud-row { margin-bottom: 5px; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
-
 .hp-wrapper { width: 320px; margin-top: 10px; }
-
 #bossContainer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
 .boss-label { animation: flashText 1s infinite alternate; }
 @keyframes flashText { from { opacity: 0.6; color: var(--cyber-alert); } to { opacity: 1; color: white; } }
 
-/* --- BARS --- */
 .tech-bar-container {
     height: 18px; background: #111; border: 1px solid #333; position: relative; overflow: hidden;
     box-shadow: inset 0 0 5px #000;
@@ -88,7 +88,6 @@ canvas { display: block; cursor: none; }
 .hp-fill { background: linear-gradient(90deg, var(--cyber-magenta), var(--cyber-alert)); box-shadow: 0 0 15px var(--cyber-magenta); }
 .boss-fill { background: var(--cyber-alert); box-shadow: 0 0 20px var(--cyber-alert); }
 
-/* --- UI ELEMENTS --- */
 .screen {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30;
