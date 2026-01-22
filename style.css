@@ -23,6 +23,29 @@ canvas { display: block; cursor: none; }
     box-shadow: inset 0 0 100px var(--cyber-alert); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; mix-blend-mode: overlay;
 }
 
+/* АЛЕРТ ШИФТА */
+#shiftAlert {
+    position: absolute; top: 30%; left: 0; width: 100%;
+    display: flex; justify-content: center; pointer-events: none; z-index: 80;
+}
+.alert-box {
+    background: rgba(255, 0, 0, 0.8);
+    border: 4px solid yellow;
+    padding: 20px 60px;
+    text-align: center;
+    box-shadow: 0 0 50px red;
+    transform: skewX(-10deg);
+}
+.blink-text {
+    font-size: 3em; color: yellow; margin: 0;
+    font-family: var(--font-header);
+    animation: rapidBlink 0.2s infinite alternate;
+}
+.press-shift {
+    font-size: 2em; color: white; margin: 10px 0 0 0; font-weight: bold;
+}
+@keyframes rapidBlink { from { opacity: 1; } to { opacity: 0.3; } }
+
 /* ТАЙМЕР БОССА */
 #bossTimerContainer {
     position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -49,7 +72,6 @@ canvas { display: block; cursor: none; }
     100% { transform: scale(1.05); box-shadow: 0 0 50px var(--cyber-magenta); border-color: var(--cyber-magenta); }
 }
 
-/* Оверлей УЛЬТЫ */
 #ultOverlay {
     position: absolute; top: 20%; left: 0; width: 100%; 
     text-align: center; pointer-events: none; z-index: 60;
