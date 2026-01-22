@@ -3,10 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS Survival Game</title>
+    <title>Выживание JS</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <div id="ui">
+        Время: <span id="timer">0</span> сек
+    </div>
+
+    <div id="gameOverScreen">
+        <h1>ИГРА ОКОНЧЕНА</h1>
+        <p>Вы продержались: <span id="finalTime">0</span> сек</p>
+        <button onclick="location.reload()">Играть снова</button>
+    </div>
 
     <canvas id="gameCanvas"></canvas>
 
