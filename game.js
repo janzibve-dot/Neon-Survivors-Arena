@@ -38,8 +38,32 @@ window.addEventListener('mousedown', (e) => {
     bullets.push(new Bullet(player.x, player.y, player.angle));
 });
 
+// --- ФУНКЦИЯ РИСОВАНИЯ СЕТКИ (НОВОЕ) ---
+function drawGrid() {
+    ctx.beginPath();
+    ctx.strokeStyle = '#222'; // Очень темный серый цвет линий
+    ctx.lineWidth = 1;
 
-// --- 3. КЛАССЫ ---
+    const gridSize = 50; // Размер клетки
+
+    // Вертикальные линии
+    for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+    }
+
+    // Горизонтальные линии
+    for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+    }
+    
+    ctx.stroke();
+    ctx.closePath();
+}
+
+
+// --- 3. КЛАССЫ С ЭФФЕКТАМИ СВЕЧЕНИЯ ---
 
 // ИГРОК
 class Player {
@@ -47,7 +71,7 @@ class Player {
         this.x = canvas.width / 2;
         this.y = canvas.height / 2;
         this.radius = 15;
-        this.color = '#3498db'; 
+        this.color = '#3498db'; // Синий неон
         this.speed = 5;
         this.xp = 100;
         this.angle = 0;
@@ -60,14 +84,12 @@ class Player {
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
 
-        // Границы
         if (this.x < this.radius) this.x = this.radius;
         if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
         if (this.y < this.radius) this.y = this.radius;
         if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
 
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
-
         if (this.hitTimer > 0) this.hitTimer--;
     }
 
@@ -76,15 +98,23 @@ class Player {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        if (this.hitTimer > 0) ctx.fillStyle = '#e74c3c';
-        else ctx.fillStyle = this.color;
+        // Настраиваем свечение
+        ctx.shadowBlur = 15; // Сила свечения
+        if (this.hitTimer > 0) {
+            ctx.fillStyle = '#e74c3c';
+            ctx.shadowColor = '#e74c3c'; // Красное свечение при ударе
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color; // Синее свечение обычно
+        }
 
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.rect(0, -5, this.radius + 10, 10);
         ctx.fill();
-        ctx.restore();
+        
+        ctx.restore(); // Сброс эффектов
     }
 }
 
@@ -94,7 +124,7 @@ class Bullet {
         this.x = x;
         this.y = y;
         this.radius = 5;
-        this.color = '#f1c40f';
+        this.color = '#f1c40f'; // Желтый неон
         this.speed = 12;
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
@@ -106,11 +136,17 @@ class Bullet {
     }
 
     draw() {
+        ctx.save();
+        ctx.shadowBlur = 10; // Пули светятся слабее
+        ctx.shadowColor = this.color;
+        
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
         ctx.closePath();
+        
+        ctx.restore();
     }
 }
 
@@ -120,56 +156,61 @@ class HealthPack {
         this.x = Math.random() * (canvas.width - 40) + 20;
         this.y = Math.random() * (canvas.height - 40) + 20;
         this.radius = 12;
-        this.color = '#2ecc71';
+        this.color = '#2ecc71'; // Зеленый неон
     }
 
     draw() {
+        ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = this.color;
+
         ctx.beginPath();
         ctx.rect(this.x - 10, this.y - 10, 20, 20);
         ctx.fillStyle = this.color;
         ctx.fill();
+        
+        // Белый крест не должен сильно светиться, рисуем поверх
+        ctx.shadowBlur = 0; 
         ctx.fillStyle = 'white';
         ctx.fillRect(this.x - 3, this.y - 8, 6, 16);
         ctx.fillRect(this.x - 8, this.y - 3, 16, 6);
         ctx.closePath();
+        
+        ctx.restore();
     }
 }
 
-// ВРАГ (ИЗМЕНЕНО ДЛЯ ЧЕСТНОСТИ)
+// ВРАГ
 class Enemy {
     constructor() {
         const side = Math.floor(Math.random() * 4);
         const typeChance = Math.random();
-        
-        // Добавляем задержку перед атакой (60 кадров = 1 секунда)
         this.waitTimer = 60; 
 
         if (typeChance < 0.2) { 
             this.type = 'tank';
             this.radius = 25;
-            this.speed = 1.2;     // Снизили скорость (было 1.5)
+            this.speed = 1.2;
             this.hp = 3;
             this.damage = 40;
-            this.color = '#8e44ad';
+            this.color = '#8e44ad'; // Фиолетовый
         } else if (typeChance < 0.5) { 
             this.type = 'runner';
             this.radius = 10;
-            this.speed = 3.5;     // Снизили скорость (было 4)
+            this.speed = 3.5;
             this.hp = 1;
             this.damage = 10;
-            this.color = '#e67e22';
+            this.color = '#e67e22'; // Оранжевый
         } else { 
             this.type = 'normal';
             this.radius = 15;
-            this.speed = 2;       // Снизили скорость (было 2.5)
+            this.speed = 2;
             this.hp = 1;
             this.damage = 20;
-            this.color = '#e74c3c';
+            this.color = '#e74c3c'; // Красный
         }
 
-        // Спавн чуть дальше от края, чтобы они "выходили" на сцену
         const offset = this.radius * 2; 
-
         if (side === 0) { this.x = Math.random() * canvas.width; this.y = -offset; }
         else if (side === 1) { this.x = canvas.width + offset; this.y = Math.random() * canvas.height; }
         else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
@@ -177,22 +218,15 @@ class Enemy {
     }
 
     update(player) {
-        // ЛОГИКА ЗАДЕРЖКИ
-        // Если враг только появился, он ждет и медленно выходит
         if (this.waitTimer > 0) {
             this.waitTimer--;
-            
-            // Во время ожидания враг движется ОЧЕНЬ медленно (просто выходит на экран)
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const angle = Math.atan2(dy, dx);
-            this.x += Math.cos(angle) * 0.5; // Скорость выхода
+            this.x += Math.cos(angle) * 0.5;
             this.y += Math.sin(angle) * 0.5;
-            
-            return; // Дальше код не идет, полная скорость не включается
+            return;
         }
-
-        // Обычное движение после задержки
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const angle = Math.atan2(dy, dx);
@@ -201,25 +235,30 @@ class Enemy {
     }
 
     draw() {
+        ctx.save();
+        if (this.waitTimer > 0) {
+            ctx.globalAlpha = 0.5;
+            // При появлении свечение слабее
+            ctx.shadowBlur = 5;
+        } else {
+            ctx.globalAlpha = 1.0;
+            // Полное свечение
+            ctx.shadowBlur = 15;
+        }
+        ctx.shadowColor = this.color;
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        
-        // Если враг еще "готовится" (waitTimer > 0), рисуем его полупрозрачным
-        if (this.waitTimer > 0) {
-            ctx.globalAlpha = 0.5; // Прозрачность 50%
-        } else {
-            ctx.globalAlpha = 1.0; // Полная видимость
-        }
-
         ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.closePath();
         
-        // Сбрасываем прозрачность для других объектов
-        ctx.globalAlpha = 1.0;
+        // Убираем черную обводку, она портит неон
+        // ctx.strokeStyle = 'black';
+        // ctx.lineWidth = 1;
+        // ctx.stroke();
+        
+        ctx.closePath();
+        ctx.restore();
     }
 }
 
@@ -244,16 +283,16 @@ function animate() {
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    frameCount++;
+    // 1. Сначала рисуем фон (сетку)
+    drawGrid();
 
+    frameCount++;
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
-        
         if (scoreTime % 10 === 0) {
             if (spawnInterval > minSpawnInterval) {
                 spawnInterval -= 5; 
-                console.log("Сложность повышена! Интервал: " + spawnInterval);
             }
         }
     }
@@ -268,6 +307,7 @@ function animate() {
         healthPacks.push(new HealthPack());
     }
 
+    // 2. Рисуем игровые объекты поверх сетки
     player.update();
     player.draw();
 
