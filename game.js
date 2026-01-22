@@ -16,6 +16,11 @@ let frameCount = 0;
 let scoreTime = 0;
 let killScore = 0;
 
+// НАСТРОЙКИ СЛОЖНОСТИ (НОВОЕ)
+let spawnTimer = 0;
+let spawnInterval = 90; // Начальная скорость спавна (90 кадров = 1.5 секунды)
+const minSpawnInterval = 20; // Максимальная скорость (не чаще чем раз в 0.3 сек)
+
 // --- 2. УПРАВЛЕНИЕ ---
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -42,7 +47,7 @@ class Player {
         this.x = canvas.width / 2;
         this.y = canvas.height / 2;
         this.radius = 15;
-        this.color = '#3498db'; // Синий
+        this.color = '#3498db'; 
         this.speed = 5;
         this.xp = 100;
         this.angle = 0;
@@ -50,22 +55,18 @@ class Player {
     }
 
     update() {
-        // Движение
         if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
         if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
 
-        // Границы
         if (this.x < this.radius) this.x = this.radius;
         if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
         if (this.y < this.radius) this.y = this.radius;
         if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
 
-        // Поворот
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
 
-        // Таймер удара
         if (this.hitTimer > 0) this.hitTimer--;
     }
 
@@ -74,11 +75,8 @@ class Player {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        if (this.hitTimer > 0) {
-            ctx.fillStyle = '#e74c3c'; // Красный при ударе
-        } else {
-            ctx.fillStyle = this.color;
-        }
+        if (this.hitTimer > 0) ctx.fillStyle = '#e74c3c';
+        else ctx.fillStyle = this.color;
 
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
@@ -115,24 +113,20 @@ class Bullet {
     }
 }
 
-// АПТЕЧКА (Новый класс)
+// АПТЕЧКА
 class HealthPack {
     constructor() {
-        // Спавнится в случайном месте экрана
         this.x = Math.random() * (canvas.width - 40) + 20;
         this.y = Math.random() * (canvas.height - 40) + 20;
         this.radius = 12;
-        this.color = '#2ecc71'; // Зеленый
+        this.color = '#2ecc71';
     }
 
     draw() {
         ctx.beginPath();
-        // Рисуем крестик или квадратик
         ctx.rect(this.x - 10, this.y - 10, 20, 20);
         ctx.fillStyle = this.color;
         ctx.fill();
-        
-        // Белый крест внутри для красоты
         ctx.fillStyle = 'white';
         ctx.fillRect(this.x - 3, this.y - 8, 6, 16);
         ctx.fillRect(this.x - 8, this.y - 3, 16, 6);
@@ -140,32 +134,28 @@ class HealthPack {
     }
 }
 
-// ВРАГ (Обновленный класс)
+// ВРАГ
 class Enemy {
     constructor() {
         const side = Math.floor(Math.random() * 4);
-        
-        // Случайный выбор типа врага
-        const typeChance = Math.random(); // Число от 0.0 до 1.0
+        const typeChance = Math.random();
 
+        // Баланс появления типов врагов
         if (typeChance < 0.2) { 
-            // 20% шанс - ТАНК (Фиолетовый)
             this.type = 'tank';
-            this.radius = 25;     // Большой
-            this.speed = 1.5;     // Медленный
-            this.hp = 3;          // 3 жизни
-            this.damage = 40;     // Больно бьет
+            this.radius = 25;
+            this.speed = 1.5;
+            this.hp = 3;
+            this.damage = 40;
             this.color = '#8e44ad';
         } else if (typeChance < 0.5) { 
-            // 30% шанс - БЕГУН (Оранжевый)
             this.type = 'runner';
-            this.radius = 10;     // Маленький
-            this.speed = 4;       // Быстрый
-            this.hp = 1;          // 1 жизнь
-            this.damage = 10;     // Слабо бьет
+            this.radius = 10;
+            this.speed = 4;
+            this.hp = 1;
+            this.damage = 10;
             this.color = '#e67e22';
         } else { 
-            // 50% шанс - ОБЫЧНЫЙ (Красный)
             this.type = 'normal';
             this.radius = 15;
             this.speed = 2.5;
@@ -174,7 +164,6 @@ class Enemy {
             this.color = '#e74c3c';
         }
 
-        // Спавн за краем экрана
         if (side === 0) { this.x = Math.random() * canvas.width; this.y = -this.radius; }
         else if (side === 1) { this.x = canvas.width + this.radius; this.y = Math.random() * canvas.height; }
         else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + this.radius; }
@@ -194,7 +183,6 @@ class Enemy {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        // Обводка, чтобы видеть границы лучше
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -206,7 +194,7 @@ class Enemy {
 const player = new Player();
 const enemies = [];
 const bullets = [];
-const healthPacks = []; // Массив для аптечек
+const healthPacks = [];
 
 // --- 5. КОНЕЦ ИГРЫ ---
 function gameOver() {
@@ -225,19 +213,36 @@ function animate() {
 
     frameCount++;
 
-    // Таймер и Спавн Врагов
+    // 1. Считаем время (каждую секунду)
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
-        enemies.push(new Enemy());
+        
+        // КАЖДЫЕ 10 СЕКУНД УСЛОЖНЯЕМ ИГРУ
+        if (scoreTime % 10 === 0) {
+            if (spawnInterval > minSpawnInterval) {
+                spawnInterval -= 5; // Враги начинают появляться чуть быстрее
+                // Выводим в консоль для проверки (нажми F12 в браузере, чтобы видеть)
+                console.log("Сложность повышена! Интервал: " + spawnInterval);
+            }
+        }
     }
 
-    // Спавн Аптечки (редко, каждые 15 секунд)
+    // 2. УМНЫЙ СПАВН ВРАГОВ
+    spawnTimer++;
+    // Если пришло время спавна И врагов на экране меньше 50
+    if (spawnTimer >= spawnInterval && enemies.length < 50) {
+        enemies.push(new Enemy());
+        spawnTimer = 0; // Сбрасываем таймер
+    }
+
+    // 3. Спавн Аптечки (каждые 15 секунд)
     if (frameCount % 900 === 0) { 
         healthPacks.push(new HealthPack());
     }
 
-    // Игрок
+    // --- ОБНОВЛЕНИЕ ОБЪЕКТОВ ---
+
     player.update();
     player.draw();
 
@@ -245,14 +250,10 @@ function animate() {
     for (let i = healthPacks.length - 1; i >= 0; i--) {
         const pack = healthPacks[i];
         pack.draw();
-
-        // Проверка: Игрок подобрал аптечку?
-        const dist = Math.hypot(player.x - pack.x, player.y - pack.y);
-        if (dist < player.radius + pack.radius) {
-            // Лечим, но не больше 100
+        if (Math.hypot(player.x - pack.x, player.y - pack.y) < player.radius + pack.radius) {
             player.xp = Math.min(player.xp + 20, 100);
             document.getElementById('xpValue').innerText = player.xp;
-            healthPacks.splice(i, 1); // Удаляем аптечку
+            healthPacks.splice(i, 1);
         }
     }
 
@@ -261,7 +262,6 @@ function animate() {
         const bullet = bullets[i];
         bullet.update();
         bullet.draw();
-
         if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
             bullets.splice(i, 1);
         }
@@ -273,29 +273,25 @@ function animate() {
         enemy.update(player);
         enemy.draw();
 
-        // 1. Враг коснулся Игрока
+        // Столкновение с игроком
         const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
         if (distToPlayer < player.radius + enemy.radius) {
-            player.xp -= enemy.damage; // Урон зависит от типа врага
+            player.xp -= enemy.damage;
             player.hitTimer = 10;
             document.getElementById('xpValue').innerText = player.xp;
-            
             enemies.splice(i, 1);
             if (player.xp <= 0) gameOver();
             continue;
         }
 
-        // 2. Пуля попала во Врага
+        // Попадание пули
         for (let j = bullets.length - 1; j >= 0; j--) {
             const bullet = bullets[j];
             const distToBullet = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
 
             if (distToBullet < enemy.radius + bullet.radius) {
-                // Пуля попала!
-                bullets.splice(j, 1); // Пуля исчезает
-                enemy.hp--; // Отнимаем жизнь у врага
-
-                // Если у врага кончились жизни (для Танка это важно)
+                bullets.splice(j, 1); 
+                enemy.hp--; 
                 if (enemy.hp <= 0) {
                     enemies.splice(i, 1);
                     killScore++;
