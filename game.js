@@ -131,7 +131,7 @@ class BulletPool {
                 b.active = true; b.x = x; b.y = y;
                 b.vx = Math.cos(angle) * speed; b.vy = Math.sin(angle) * speed;
                 b.life = 80; 
-                b.damage = 10; // ФИКСИРОВАННЫЙ УРОН ДЛЯ ТЕСТА
+                b.damage = 10; 
                 b.trail = [];
                 sound.shoot();
                 return;
@@ -274,16 +274,19 @@ class Enemy {
             else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
             else { this.x = -offset; this.y = Math.random() * canvas.height; }
 
-            // Баланс здоровья (не слишком много, чтобы умирали)
+            // --- БАЛАНС ВРАГОВ (ИЗМЕНЕНО) ---
             if (typeChance < 0.2) { 
+                // Танк (Крупный) - 30 HP (3 попадания по 10)
                 this.type = 'tank'; this.radius = 25; this.speed = 1.2; 
                 this.hp = 30; this.maxHp=30; 
                 this.damage=30; this.xpReward=50; this.color='#bf00ff'; 
             } else if (typeChance < 0.5) { 
+                // Бегун (Мелкий) - 10 HP (1 попадание по 10)
                 this.type = 'runner'; this.radius = 10; this.speed = 4; 
                 this.hp=10; this.maxHp=10; 
                 this.damage=10; this.xpReward=15; this.color='#ffaa00'; 
             } else { 
+                // Обычный (Средний) - 20 HP (2 попадания по 10)
                 this.type = 'normal'; this.radius = 15; this.speed=2.0; 
                 this.hp=20; this.maxHp=20; 
                 this.damage=15; this.xpReward=20; this.color='#ff0055'; 
@@ -308,7 +311,6 @@ class Enemy {
         ctx.shadowBlur = 15; ctx.shadowColor = this.color;
         ctx.globalAlpha = this.waitTimer > 0 ? 0.3 : 1.0;
         
-        // При попадании - белый цвет
         ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : this.color;
         
         ctx.beginPath();
@@ -434,10 +436,10 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     bg.update(); bg.draw();
     
-    // ВЕРСИЯ КОДА
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.font = '12px Courier';
-    ctx.fillText("ВЕРСИЯ: ИСПРАВЛЕНО", 10, 20);
+    // ВЕРСИЯ КОДА (УБРАЛ ПОСЛЕ ТЕСТА, ЧТОБЫ БЫЛО ЧИСТО)
+    // ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    // ctx.font = '12px Courier';
+    // ctx.fillText("ВЕРСИЯ: ИСПРАВЛЕНО", 10, 20);
 
     frameCount++;
     if (frameCount % 60 === 0) {
@@ -481,14 +483,12 @@ function animate() {
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             
-            // ПРОСТАЯ ПРОВЕРКА ДИСТАНЦИИ
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
             
-            // Если попали
             if (dist < enemy.radius + b.radius + 15) {
                 b.active = false; 
                 
-                // НАНОСИМ УРОН (ГАРАНТИРОВАННО 10)
+                // УРОН ФИКСИРОВАН (10), чтобы соответствовать HP
                 enemy.hp -= 10;
                 
                 enemy.hitFlash = 3;
