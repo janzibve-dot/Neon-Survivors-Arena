@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Survivor: Visual Update</title>
+    <title>Neon Survivor: Ultimate</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,16 +12,25 @@
 
     <div id="startScreen" class="screen">
         <h1 class="neon-text">NEON SURVIVOR</h1>
-        <p>Управление: WASD + Мышь</p>
+        <p>WASD - Движение | CLICK - Стрельба | ESC - Пауза</p>
         <button id="startBtn">ЗАПУСК СИСТЕМЫ</button>
     </div>
 
+    <div id="pauseScreen" class="screen" style="display: none;">
+        <h1 class="neon-text" style="color: #f1c40f;">ПАУЗА</h1>
+        <button id="resumeBtn">ПРОДОЛЖИТЬ</button>
+    </div>
+
     <div id="ui">
-        <div class="top-bar">
-            <div class="level-box">
-                LVL <span id="levelValue">1</span>
+        <div id="bossContainer" style="display: none;">
+            <div class="boss-label">ВНИМАНИЕ: БОСС</div>
+            <div class="bar-container hp-container" style="width: 600px; margin: 0 auto;">
+                <div class="bar-fill" id="bossHpBar" style="background: #ff0055; width: 100%;"></div>
             </div>
-            
+        </div>
+
+        <div class="top-bar">
+            <div class="level-box">LVL <span id="levelValue">1</span></div>
             <div class="bar-container xp-container">
                 <div class="bar-fill xp-fill" id="xpBar"></div>
             </div>
@@ -40,7 +49,6 @@
 
     <div id="levelUpScreen" class="screen" style="display: none;">
         <h2 class="neon-text">СИСТЕМА ОБНОВЛЕНА</h2>
-        <p>Выберите модуль улучшения:</p>
         <div id="upgradeContainer"></div>
     </div>
 
