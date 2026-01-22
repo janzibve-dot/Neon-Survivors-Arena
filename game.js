@@ -13,12 +13,16 @@ window.addEventListener('resize', resize);
 const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4 };
 let currentState = STATE.MENU;
 
+// Глобальные переменные
 let frameCount = 0;
-let scoreTime = 0;
+let scoreTime = 0; // Общее время игры
 let killScore = 0;
 let highScore = localStorage.getItem('neonSurvivorsArenaHighScore') || 0;
+
+// Уровни и сложность
 let gameStage = 1;              
 let difficultyMultiplier = 1.0; 
+let timeUntilBoss = 60; // Время до босса в секундах (динамическое)
 
 let spawnTimer = 0;
 let spawnInterval = 90;
@@ -31,18 +35,14 @@ let isMouseDown = false;
 
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    
-    // Пауза
     if ((e.code === 'Escape' || e.code === 'KeyP') && (currentState === STATE.PLAYING || currentState === STATE.PAUSE)) {
         togglePause();
     }
-
-    // --- ЧИТ-КОД: НАЖМИ 'B' ЧТОБЫ ВЫЗВАТЬ БОССА ---
+    // Чит для теста (B - Boss)
     if (e.code === 'KeyB' && currentState === STATE.PLAYING && !bossActive) {
-        spawnBoss();
+        timeUntilBoss = 0;
     }
 });
-
 window.addEventListener('keyup', e => keys[e.code] = false);
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 window.addEventListener('mousedown', () => { isMouseDown = true; });
@@ -154,7 +154,7 @@ class ParticlePool {
         ctx.globalAlpha = 1.0; ctx.globalCompositeOperation = 'source-over';
     }
 }
-const particlePool = new ParticlePool(600);
+const particlePool = new ParticlePool(1000); // Больше частиц для салюта
 
 // --- 4. ОРУЖИЕ ---
 class BulletPool {
@@ -180,7 +180,6 @@ class BulletPool {
             if (b.active) {
                 b.x += b.vx; b.y += b.vy; b.life--;
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
-                
                 ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
                 ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(b.x, b.y);
@@ -476,28 +475,40 @@ const upgradesList = [
     { title: "АВТОМАТ", desc: "РЕЖИМ ТУРЕЛИ", apply: () => player.weaponType = 'RAPID' }
 ];
 
-function spawnBoss() {
-    enemies.push(new Enemy(true));
-    player.activateUlt(); // ВКЛЮЧАЕМ УЛЬТУ
-}
-
 function startGame() {
     sound.init();
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('stageAnnouncement').style.display = 'none';
+    
     player.reset(); enemies = []; bossActive = false;
     document.getElementById('bossContainer').style.display = 'none';
     
     gameStage = 1;
     difficultyMultiplier = 1.0;
+    timeUntilBoss = 60; // Старт с 60 сек
     
     bulletPool.pool.forEach(b => b.active = false);
     rocketPool.pool.forEach(r => r.active = false);
     enemyBulletPool.pool.forEach(b => b.active = false);
     particlePool.pool.forEach(p => p.active = false);
-    scoreTime = 0; killScore = 0; spawnInterval = 90; frameCount = 0;
+    scoreTime = 0; killScore = 0; spawnInterval = 100; // Чуть медленнее спавн для начала
+    frameCount = 0;
     currentState = STATE.PLAYING; updateUI(); animate();
+}
+
+function launchFireworks() {
+    // Салют в разных точках
+    for(let i=0; i<5; i++) {
+        setTimeout(() => {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const color = ['#ff00ff', '#00f3ff', '#ffea00'][Math.floor(Math.random()*3)];
+            particlePool.explode(x, y, color, 50);
+            sound.rocket(); 
+        }, i * 300);
+    }
 }
 
 function togglePause() {
@@ -564,17 +575,31 @@ function animate() {
     bg.update(); bg.draw();
 
     frameCount++;
+    
+    // ТАЙМЕР БОССА
+    if (!bossActive) {
+        timeUntilBoss -= 1/60; // Отнимаем секунду (при 60 FPS)
+        if (timeUntilBoss <= 0) {
+            timeUntilBoss = 0;
+            enemies.push(new Enemy(true));
+            player.activateUlt();
+        }
+        document.getElementById('bossCountdown').innerText = Math.ceil(timeUntilBoss);
+    } else {
+        document.getElementById('bossCountdown').innerText = "!!!";
+    }
+
     if (frameCount % 60 === 0) {
-        // --- БАЛАНС: БОСС КАЖДЫЕ 60 СЕКУНД (Исправлено обратно на 60 для теста) ---
-        if (scoreTime > 0 && scoreTime % 60 === 0 && !bossActive) spawnBoss();
-        
         scoreTime++;
         if (scoreTime % 10 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
 
     spawnTimer++;
-    let maxE = bossActive ? MAX_ENEMIES_BOSS : MAX_ENEMIES_NORMAL;
-    if (spawnTimer >= spawnInterval && enemies.length < maxE) { 
+    // На 1 уровне врагов меньше (30), дальше 50
+    let limit = (gameStage === 1) ? 30 : MAX_ENEMIES_NORMAL;
+    if (bossActive) limit = MAX_ENEMIES_BOSS;
+
+    if (spawnTimer >= spawnInterval && enemies.length < limit) { 
         enemies.push(new Enemy()); 
         spawnTimer = 0; 
     }
@@ -616,10 +641,24 @@ function animate() {
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
-                        gameStage++; difficultyMultiplier *= 1.05; 
+                        
+                        // ПЕРЕХОД УРОВНЯ
+                        gameStage++;
+                        difficultyMultiplier *= 1.05; 
+                        
+                        // Увеличиваем время следующего босса на 5%
+                        let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
+                        timeUntilBoss = nextBossTime;
+
+                        launchFireworks(); // САЛЮТ
                         sound.bossDeath();
                         particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
-                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED!", "#ff2a2a");
+                        
+                        // Показываем окно уровня
+                        document.getElementById('announcementStage').innerText = gameStage;
+                        document.getElementById('stageAnnouncement').style.display = 'flex';
+                        setTimeout(() => document.getElementById('stageAnnouncement').style.display = 'none', 3000);
+
                         updateUI();
                     }
                 }
@@ -646,10 +685,20 @@ function animate() {
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
-                        gameStage++; difficultyMultiplier *= 1.05; 
+                        
+                        gameStage++;
+                        difficultyMultiplier *= 1.05; 
+                        let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
+                        timeUntilBoss = nextBossTime;
+
+                        launchFireworks(); 
                         sound.bossDeath();
                         particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
-                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED!", "#ff2a2a");
+                        
+                        document.getElementById('announcementStage').innerText = gameStage;
+                        document.getElementById('stageAnnouncement').style.display = 'flex';
+                        setTimeout(() => document.getElementById('stageAnnouncement').style.display = 'none', 3000);
+
                         updateUI();
                     }
                 }
