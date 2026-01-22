@@ -1,5 +1,4 @@
 
-/* Базовые настройки */
 body {
     margin: 0;
     overflow: hidden;
@@ -9,10 +8,9 @@ body {
 
 canvas {
     display: block;
-    cursor: crosshair; /* Курсор в виде прицела */
+    cursor: default; /* Обычный курсор */
 }
 
-/* Интерфейс */
 #ui {
     position: absolute;
     top: 20px;
@@ -25,12 +23,10 @@ canvas {
     text-shadow: 1px 1px 2px black;
 }
 
-/* Цвета для значений */
-#xpValue { color: #e74c3c; }    /* Красный */
-#scoreValue { color: #f1c40f; } /* Желтый */
-#timer { color: #3498db; }      /* Синий */
+#xpValue { color: #e74c3c; }
+#scoreValue { color: #f1c40f; }
+#timer { color: #3498db; }
 
-/* Экран проигрыша */
 #gameOverScreen {
     display: none;
     position: absolute;
