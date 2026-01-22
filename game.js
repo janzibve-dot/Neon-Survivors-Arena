@@ -13,7 +13,6 @@ window.addEventListener('resize', resize);
 const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4 };
 let currentState = STATE.MENU;
 
-// Глобальные переменные игры
 let frameCount = 0;
 let scoreTime = 0;
 let killScore = 0;
@@ -26,7 +25,6 @@ let spawnInterval = 90;
 const MAX_ENEMIES_NORMAL = 50;
 const MAX_ENEMIES_BOSS = 6;     
 
-// Управление
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
@@ -61,10 +59,15 @@ class SoundManager {
         osc.start(); osc.stop(this.ctx.currentTime + duration);
     }
     shoot() { this.playTone(400 + Math.random()*200, 'square', 0.1, 0.03); }
+    rocket() { this.playTone(150, 'sawtooth', 0.3, 0.1); } // Звук ракеты
     enemyShoot() { this.playTone(200, 'triangle', 0.1, 0.02); }
     hit() { this.playTone(100, 'sawtooth', 0.1, 0.05); }
     enemyDeath() { this.playTone(50, 'sawtooth', 0.2, 0.1); }
     bossSpawn() { this.playTone(30, 'square', 2.0, 0.2); }
+    bossDeath() { // Звук смерти босса
+        this.playTone(40, 'square', 1.0, 0.3);
+        setTimeout(() => this.playTone(30, 'sawtooth', 1.5, 0.3), 200);
+    }
     levelUp() { 
         setTimeout(() => this.playTone(440, 'sine', 0.3, 0.1), 0);
         setTimeout(() => this.playTone(554, 'sine', 0.3, 0.1), 100);
@@ -145,7 +148,9 @@ class ParticlePool {
 }
 const particlePool = new ParticlePool(600);
 
-// --- 4. ПУЛИ ---
+// --- 4. ОРУЖИЕ ---
+
+// ПУЛ ОБЫЧНЫХ ПУЛЬ
 class BulletPool {
     constructor(size) {
         this.pool = [];
@@ -169,9 +174,7 @@ class BulletPool {
             if (b.active) {
                 b.x += b.vx; b.y += b.vy; b.life--;
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
-                
                 ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
-                // Трейл
                 ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(b.x, b.y);
                 ctx.lineTo(b.x - b.vx*2, b.y - b.vy*2); ctx.stroke();
@@ -182,7 +185,47 @@ class BulletPool {
 }
 const bulletPool = new BulletPool(150);
 
-// Пул вражеских пуль (Красные)
+// ПУЛ РАКЕТ (УЛЬТА)
+class RocketPool {
+    constructor(size) {
+        this.pool = [];
+        for (let i = 0; i < size; i++) this.pool.push({active: false, x:0, y:0, vx:0, vy:0, life:0, damage: 50, radius: 8});
+    }
+    get(x, y, angle) {
+        for (let r of this.pool) {
+            if (!r.active) {
+                r.active = true; r.x = x; r.y = y;
+                // Ракеты медленнее пуль, но мощнее
+                r.vx = Math.cos(angle) * 8; r.vy = Math.sin(angle) * 8; 
+                r.life = 100; r.damage = 50; r.radius = 10;
+                sound.rocket(); return;
+            }
+        }
+    }
+    updateAndDraw() {
+        ctx.shadowBlur = 20; ctx.shadowColor = '#ffea00';
+        for (let r of this.pool) {
+            if (r.active) {
+                r.x += r.vx; r.y += r.vy; r.life--;
+                if (r.life <= 0 || r.x < 0 || r.x > canvas.width || r.y < 0 || r.y > canvas.height) { r.active = false; continue; }
+                
+                // Рисуем ракету (вытянутый прямоугольник)
+                ctx.save();
+                ctx.translate(r.x, r.y);
+                ctx.rotate(Math.atan2(r.vy, r.vx));
+                ctx.fillStyle = '#ffea00';
+                ctx.fillRect(-10, -4, 20, 8); // Тело ракеты
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(-10, -4, 5, 8); // Хвост
+                ctx.restore();
+            }
+        }
+        ctx.shadowBlur = 0;
+    }
+}
+const rocketPool = new RocketPool(50);
+
+// ПУЛ ПУЛЬ ВРАГОВ
 class EnemyBulletPool {
     constructor(size) {
         this.pool = [];
@@ -203,13 +246,10 @@ class EnemyBulletPool {
             if (b.active) {
                 b.x += b.vx; b.y += b.vy; b.life--;
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
-                
                 ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
-
                 const dist = Math.hypot(b.x - player.x, b.y - player.y);
                 if (dist < player.radius + 4) {
-                    player.takeDamage(5); 
-                    b.active = false;
+                    player.takeDamage(5); b.active = false;
                     particlePool.explode(player.x, player.y, '#ff2a2a', 5);
                 }
             }
@@ -227,34 +267,65 @@ class Player {
         this.color = '#00f3ff';
         this.speed = 5; this.angle = 0;
         this.maxHp = 100; this.hp = 100;
-        this.level = 1; 
-        this.xp = 0; 
-        
-        // --- БАЛАНС: ЕЩЕ РЕЖЕ УРОВНИ ---
-        this.nextLevelXp = 400; // Было 200, теперь 400
+        this.level = 1; this.xp = 0; 
+        this.nextLevelXp = 400; // Прокачка в 2 раза медленнее
         
         this.damage = 10; this.fireRate = 10; this.cooldown = 0;
         this.weaponType = 'DEFAULT'; this.hitTimer = 0;
+        
+        // УЛЬТА
+        this.isFrozen = false; // Заморожен ли игрок
+        this.ultTimer = 0;
     }
+    
+    activateUlt() {
+        this.isFrozen = true;
+        this.ultTimer = 360; // 6 секунд (60 кадров * 6)
+        document.getElementById('ultOverlay').style.display = 'block';
+    }
+
     update() {
-        if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
-        if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
-        if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
-        if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
+        // Если НЕ заморожен - двигаемся
+        if (!this.isFrozen) {
+            if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
+            if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
+            if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
+            if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
+        } else {
+            // Если заморожен - тикает таймер
+            this.ultTimer--;
+            if (this.ultTimer <= 0) {
+                this.isFrozen = false;
+                document.getElementById('ultOverlay').style.display = 'none';
+            }
+        }
+
+        // Границы
         this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
         this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+        
+        // Поворот работает ВСЕГДА
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+        
         if (this.hitTimer > 0) this.hitTimer--;
         if (this.cooldown > 0) this.cooldown--;
         if (isMouseDown) this.tryShoot();
     }
+
     tryShoot() {
         if (this.cooldown <= 0) {
             const bx = this.x + Math.cos(this.angle) * 25; const by = this.y + Math.sin(this.angle) * 25;
             
+            // Если заморожен - стреляем РАКЕТАМИ
+            if (this.isFrozen) {
+                rocketPool.get(bx, by, this.angle);
+                this.cooldown = 20; // Скорострельность ракет
+                return;
+            }
+
+            // Обычное оружие
             if (this.weaponType === 'SHOTGUN') {
-                // --- БАЛАНС: ПОВЫШЕННЫЙ УРОН ДРОБОВИКА (x2) ---
-                const shotgunDamage = this.damage * 2; 
+                const shotgunDamage = this.damage * 2; // Усиленный дробовик
                 bulletPool.get(bx, by, this.angle, 15, shotgunDamage);
                 bulletPool.get(bx, by, this.angle - 0.2, 15, shotgunDamage);
                 bulletPool.get(bx, by, this.angle + 0.2, 15, shotgunDamage);
@@ -270,7 +341,6 @@ class Player {
         this.xp += amount;
         if (this.xp >= this.nextLevelXp) {
             this.xp -= this.nextLevelXp; this.level++;
-            // Увеличиваем сложность набора следующего уровня
             this.nextLevelXp = Math.floor(this.nextLevelXp * 1.2);
             isMouseDown = false; sound.levelUp();
             currentState = STATE.LEVEL_UP; showUpgradeScreen();
@@ -288,7 +358,9 @@ class Player {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         ctx.shadowBlur = 25; ctx.shadowColor = this.hitTimer > 0 ? '#ff0000' : this.color;
         ctx.fillStyle = this.hitTimer > 0 ? '#ffffff' : this.color;
+        
         ctx.beginPath();
+        // Если заморожен - рисуем шипы или что-то другое (опционально), но пока оставим как есть
         ctx.moveTo(15, 0); ctx.lineTo(-10, 15); ctx.lineTo(-5, 0); ctx.lineTo(-10, -15); ctx.closePath();
         ctx.fill();
         ctx.fillStyle = this.hitTimer > 0 ? '#ffffff' : '#009999';
@@ -303,14 +375,14 @@ let bossActive = false;
 class Enemy {
     constructor(isBoss = false) {
         this.isBoss = isBoss; this.waitTimer = 60; this.hitFlash = 0;
-        
         const hpMult = difficultyMultiplier;
 
         if (isBoss) {
             sound.bossSpawn();
             this.type = 'boss'; this.radius = 60; 
-            this.speed = 1.2 * hpMult;
-            this.maxHp = Math.floor((500 + (player.level * 50)) * hpMult);
+            // Босс чуть быстрее и жирнее
+            this.speed = 1.3 * hpMult;
+            this.maxHp = Math.floor((800 + (player.level * 100)) * hpMult); // Усложнили босса
             this.hp = this.maxHp;
             this.damage = 50 * hpMult; this.xpReward = 500 * hpMult; 
             this.color = '#ff2a2a'; 
@@ -429,6 +501,7 @@ function startGame() {
     difficultyMultiplier = 1.0;
     
     bulletPool.pool.forEach(b => b.active = false);
+    rocketPool.pool.forEach(r => r.active = false); // Сброс ракет
     enemyBulletPool.pool.forEach(b => b.active = false);
     particlePool.pool.forEach(p => p.active = false);
     scoreTime = 0; killScore = 0; spawnInterval = 90; frameCount = 0;
@@ -501,7 +574,10 @@ function animate() {
     frameCount++;
     if (frameCount % 60 === 0) {
         // --- БАЛАНС: БОСС КАЖДЫЕ 180 СЕКУНД (3 МИНУТЫ) ---
-        if (scoreTime > 0 && scoreTime % 180 === 0 && !bossActive) enemies.push(new Enemy(true));
+        if (scoreTime > 0 && scoreTime % 180 === 0 && !bossActive) {
+            enemies.push(new Enemy(true));
+            player.activateUlt(); // ВКЛЮЧАЕМ УЛЬТУ
+        }
         scoreTime++;
         if (scoreTime % 10 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
@@ -516,7 +592,11 @@ function animate() {
     particlePool.updateAndDraw();
     floatText.updateAndDraw();
     player.update(); player.draw();
+    
+    // Рисуем и обновляем и пули, и ракеты
     bulletPool.updateAndDraw();
+    rocketPool.updateAndDraw();
+    
     enemyBulletPool.updateAndDraw(player);
 
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -529,6 +609,7 @@ function animate() {
             if (!enemy.isBoss) enemies.splice(i, 1); continue;
         }
 
+        // ПРОВЕРКА ПУЛЬ
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dx = b.x - enemy.x; const dy = b.y - enemy.y;
@@ -537,7 +618,7 @@ function animate() {
             
             if (dist < enemy.radius + bulletRadius + 15) {
                 b.active = false; 
-                enemy.hp -= b.damage; // Учитываем усиленный урон (например, дробовика)
+                enemy.hp -= b.damage; 
                 enemy.hitFlash = 3;
                 particlePool.explode(b.x, b.y, '#fff', 5);
                 floatText.show(enemy.x, enemy.y - 30, "HIT", "#00f3ff");
@@ -546,14 +627,42 @@ function animate() {
                     enemies.splice(i, 1); killScore++; player.gainXp(enemy.xpReward);
                     sound.enemyDeath(); particlePool.explode(enemy.x, enemy.y, enemy.color, 30);
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
-                    
                     if (enemy.isBoss) { 
-                        bossActive = false; 
-                        document.getElementById('bossContainer').style.display = 'none'; 
-                        
-                        gameStage++;
-                        difficultyMultiplier *= 1.05; 
-                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED! DIFFICULTY UP", "#ff2a2a");
+                        bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
+                        gameStage++; difficultyMultiplier *= 1.05; 
+                        sound.bossDeath();
+                        particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); // Взрыв босса
+                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED!", "#ff2a2a");
+                        updateUI();
+                    }
+                }
+                break;
+            }
+        }
+
+        // ПРОВЕРКА РАКЕТ (УЛЬТА)
+        for (let r of rocketPool.pool) {
+            if (!r.active) continue;
+            const dx = r.x - enemy.x; const dy = r.y - enemy.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < enemy.radius + r.radius + 20) {
+                r.active = false; 
+                enemy.hp -= r.damage; // 50 урона
+                enemy.hitFlash = 3;
+                particlePool.explode(r.x, r.y, '#ffea00', 10); // Желтый взрыв ракеты
+                floatText.show(enemy.x, enemy.y - 30, "BOOM!", "#ffea00");
+
+                if (enemy.hp <= 0) {
+                    enemies.splice(i, 1); killScore++; player.gainXp(enemy.xpReward);
+                    sound.enemyDeath(); particlePool.explode(enemy.x, enemy.y, enemy.color, 30);
+                    floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
+                    if (enemy.isBoss) { 
+                        bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
+                        gameStage++; difficultyMultiplier *= 1.05; 
+                        sound.bossDeath();
+                        particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
+                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED!", "#ff2a2a");
                         updateUI();
                     }
                 }
