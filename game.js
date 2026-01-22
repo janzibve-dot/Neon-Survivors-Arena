@@ -1,8 +1,9 @@
 
-// --- 1. НАСТРОЙКИ ---
+// --- 1. НАСТРОЙКИ И КОНСТАНТЫ ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Подстройка размера
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -10,16 +11,23 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// Состояние игры
-let isGameOver = false;
+// Состояния игры
+const STATE = {
+    MENU: 0,
+    PLAYING: 1,
+    LEVEL_UP: 2,
+    GAME_OVER: 3
+};
+
+let currentState = STATE.MENU;
 let frameCount = 0;
 let scoreTime = 0;
 let killScore = 0;
 
 // Сложность
 let spawnTimer = 0;
-let spawnInterval = 90; 
-const minSpawnInterval = 20;
+let spawnInterval = 90;
+const MAX_ENEMIES = 50; // Жесткое ограничение количества врагов
 
 // --- 2. УПРАВЛЕНИЕ ---
 const keys = {};
@@ -27,70 +35,157 @@ const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
-
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
 });
-
-window.addEventListener('mousedown', (e) => {
-    if (isGameOver) return;
-    bullets.push(new Bullet(player.x, player.y, player.angle));
+window.addEventListener('mousedown', () => {
+    if (currentState === STATE.PLAYING) {
+        player.tryShoot();
+    }
 });
 
-// --- ФУНКЦИЯ РИСОВАНИЯ СЕТКИ (НОВОЕ) ---
-function drawGrid() {
-    ctx.beginPath();
-    ctx.strokeStyle = '#222'; // Очень темный серый цвет линий
-    ctx.lineWidth = 1;
+// Кнопка "Играть" в начале
+document.getElementById('startBtn').addEventListener('click', startGame);
 
-    const gridSize = 50; // Размер клетки
-
-    // Вертикальные линии
-    for (let x = 0; x <= canvas.width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+// --- 3. ОПТИМИЗАЦИЯ (OBJECT POOLING) ---
+class BulletPool {
+    constructor(size) {
+        this.pool = [];
+        for (let i = 0; i < size; i++) {
+            this.pool.push({
+                active: false,
+                x: 0, y: 0,
+                vx: 0, vy: 0,
+                radius: 5,
+                color: '#f1c40f',
+                life: 0
+            });
+        }
     }
 
-    // Горизонтальные линии
-    for (let y = 0; y <= canvas.height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+    // Взять пулю из пула
+    get(x, y, angle, speed, damage, size) {
+        // Ищем первую неактивную пулю
+        for (let bullet of this.pool) {
+            if (!bullet.active) {
+                bullet.active = true;
+                bullet.x = x;
+                bullet.y = y;
+                bullet.vx = Math.cos(angle) * speed;
+                bullet.vy = Math.sin(angle) * speed;
+                bullet.life = 100; // Пуля живет ограниченное время
+                bullet.damage = damage; // Урон пули
+                bullet.radius = size;
+                return;
+            }
+        }
+        // Если пул полон, пуля просто не вылетит (это спасает от лагов)
     }
-    
-    ctx.stroke();
-    ctx.closePath();
+
+    updateAndDraw() {
+        ctx.save();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#f1c40f';
+        ctx.fillStyle = '#f1c40f';
+
+        for (let bullet of this.pool) {
+            if (bullet.active) {
+                // Движение
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                bullet.life--;
+
+                // Выход за экран или смерть по времени
+                if (bullet.life <= 0 || 
+                    bullet.x < 0 || bullet.x > canvas.width || 
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    bullet.active = false;
+                    continue;
+                }
+
+                // Отрисовка
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
 }
 
+// Создаем пул на 100 пуль (больше не нужно)
+const bulletPool = new BulletPool(100);
 
-// --- 3. КЛАССЫ С ЭФФЕКТАМИ СВЕЧЕНИЯ ---
+// --- 4. КЛАССЫ ---
 
-// ИГРОК
 class Player {
     constructor() {
+        this.reset();
+    }
+
+    reset() {
         this.x = canvas.width / 2;
         this.y = canvas.height / 2;
         this.radius = 15;
-        this.color = '#3498db'; // Синий неон
+        this.color = '#3498db';
         this.speed = 5;
-        this.xp = 100;
         this.angle = 0;
         this.hitTimer = 0;
+
+        // Характеристики RPG
+        this.maxHp = 100;
+        this.hp = 100;
+        this.level = 1;
+        this.xp = 0;
+        this.nextLevelXp = 100;
+        
+        // Характеристики оружия
+        this.damage = 1;      // Урон
+        this.fireRate = 20;   // Задержка (меньше = быстрее)
+        this.cooldown = 0;
     }
 
     update() {
+        // Движение
         if (keys['KeyW'] || keys['ArrowUp']) this.y -= this.speed;
         if (keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if (keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if (keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
 
-        if (this.x < this.radius) this.x = this.radius;
-        if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
-        if (this.y < this.radius) this.y = this.radius;
-        if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
+        // Границы
+        this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
 
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+
         if (this.hitTimer > 0) this.hitTimer--;
+        if (this.cooldown > 0) this.cooldown--;
+    }
+
+    tryShoot() {
+        if (this.cooldown <= 0) {
+            bulletPool.get(this.x, this.y, this.angle, 12, this.damage, 5);
+            this.cooldown = this.fireRate;
+        }
+    }
+
+    gainXp(amount) {
+        this.xp += amount;
+        if (this.xp >= this.nextLevelXp) {
+            this.levelUp();
+        }
+        updateUI();
+    }
+
+    levelUp() {
+        this.xp -= this.nextLevelXp;
+        this.level++;
+        this.nextLevelXp = Math.floor(this.nextLevelXp * 1.2); // Следующий уровень сложнее на 20%
+        
+        // ПАУЗА ИГРЫ
+        currentState = STATE.LEVEL_UP;
+        showUpgradeScreen();
     }
 
     draw() {
@@ -98,119 +193,57 @@ class Player {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Настраиваем свечение
-        ctx.shadowBlur = 15; // Сила свечения
+        ctx.shadowBlur = 15;
         if (this.hitTimer > 0) {
             ctx.fillStyle = '#e74c3c';
-            ctx.shadowColor = '#e74c3c'; // Красное свечение при ударе
+            ctx.shadowColor = '#e74c3c';
         } else {
             ctx.fillStyle = this.color;
-            ctx.shadowColor = this.color; // Синее свечение обычно
+            ctx.shadowColor = this.color;
         }
 
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.rect(0, -5, this.radius + 10, 10);
+        ctx.rect(0, -5, this.radius + 10, 10); // Дуло
         ctx.fill();
-        
-        ctx.restore(); // Сброс эффектов
-    }
-}
-
-// ПУЛЯ
-class Bullet {
-    constructor(x, y, angle) {
-        this.x = x;
-        this.y = y;
-        this.radius = 5;
-        this.color = '#f1c40f'; // Желтый неон
-        this.speed = 12;
-        this.vx = Math.cos(angle) * this.speed;
-        this.vy = Math.sin(angle) * this.speed;
-    }
-
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.shadowBlur = 10; // Пули светятся слабее
-        ctx.shadowColor = this.color;
-        
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.closePath();
-        
         ctx.restore();
     }
 }
 
-// АПТЕЧКА
-class HealthPack {
-    constructor() {
-        this.x = Math.random() * (canvas.width - 40) + 20;
-        this.y = Math.random() * (canvas.height - 40) + 20;
-        this.radius = 12;
-        this.color = '#2ecc71'; // Зеленый неон
-    }
-
-    draw() {
-        ctx.save();
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = this.color;
-
-        ctx.beginPath();
-        ctx.rect(this.x - 10, this.y - 10, 20, 20);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        
-        // Белый крест не должен сильно светиться, рисуем поверх
-        ctx.shadowBlur = 0; 
-        ctx.fillStyle = 'white';
-        ctx.fillRect(this.x - 3, this.y - 8, 6, 16);
-        ctx.fillRect(this.x - 8, this.y - 3, 16, 6);
-        ctx.closePath();
-        
-        ctx.restore();
-    }
-}
-
-// ВРАГ
 class Enemy {
     constructor() {
         const side = Math.floor(Math.random() * 4);
         const typeChance = Math.random();
-        this.waitTimer = 60; 
+        this.waitTimer = 60; // 1 секунда задержки
 
         if (typeChance < 0.2) { 
             this.type = 'tank';
             this.radius = 25;
-            this.speed = 1.2;
-            this.hp = 3;
-            this.damage = 40;
-            this.color = '#8e44ad'; // Фиолетовый
+            this.speed = 1.5;
+            this.hp = 6;     // Увеличили HP
+            this.damage = 30;
+            this.xpReward = 50;
+            this.color = '#8e44ad';
         } else if (typeChance < 0.5) { 
             this.type = 'runner';
             this.radius = 10;
-            this.speed = 3.5;
+            this.speed = 4;
             this.hp = 1;
             this.damage = 10;
-            this.color = '#e67e22'; // Оранжевый
+            this.xpReward = 15;
+            this.color = '#e67e22';
         } else { 
             this.type = 'normal';
             this.radius = 15;
-            this.speed = 2;
-            this.hp = 1;
-            this.damage = 20;
-            this.color = '#e74c3c'; // Красный
+            this.speed = 2.5;
+            this.hp = 2;
+            this.damage = 15;
+            this.xpReward = 20;
+            this.color = '#e74c3c';
         }
 
-        const offset = this.radius * 2; 
+        const offset = this.radius * 2;
         if (side === 0) { this.x = Math.random() * canvas.width; this.y = -offset; }
         else if (side === 1) { this.x = canvas.width + offset; this.y = Math.random() * canvas.height; }
         else if (side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + offset; }
@@ -220,13 +253,13 @@ class Enemy {
     update(player) {
         if (this.waitTimer > 0) {
             this.waitTimer--;
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const angle = Math.atan2(dy, dx);
+            // Медленный выход
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
             this.x += Math.cos(angle) * 0.5;
             this.y += Math.sin(angle) * 0.5;
             return;
         }
+        
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const angle = Math.atan2(dy, dx);
@@ -236,131 +269,192 @@ class Enemy {
 
     draw() {
         ctx.save();
-        if (this.waitTimer > 0) {
-            ctx.globalAlpha = 0.5;
-            // При появлении свечение слабее
-            ctx.shadowBlur = 5;
-        } else {
-            ctx.globalAlpha = 1.0;
-            // Полное свечение
-            ctx.shadowBlur = 15;
-        }
+        ctx.globalAlpha = this.waitTimer > 0 ? 0.5 : 1.0;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
-
+        
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        
-        // Убираем черную обводку, она портит неон
-        // ctx.strokeStyle = 'black';
-        // ctx.lineWidth = 1;
-        // ctx.stroke();
-        
-        ctx.closePath();
         ctx.restore();
     }
 }
 
-// --- 4. ИНИЦИАЛИЗАЦИЯ ---
-const player = new Player();
-const enemies = [];
-const bullets = [];
-const healthPacks = [];
+// --- 5. ФУНКЦИИ ИГРОВОГО ПРОЦЕССА ---
 
-// --- 5. КОНЕЦ ИГРЫ ---
-function gameOver() {
-    isGameOver = true;
-    document.getElementById('gameOverScreen').style.display = 'block';
-    document.getElementById('finalTime').innerText = scoreTime;
-    document.getElementById('finalScore').innerText = killScore;
+const player = new Player();
+let enemies = [];
+
+// Список возможных улучшений
+const upgradesList = [
+    { 
+        title: "УРОН +1", 
+        desc: "Ваши пули бьют больнее", 
+        apply: () => { player.damage += 1; }
+    },
+    { 
+        title: "СКОРОСТРЕЛЬНОСТЬ", 
+        desc: "Вы стреляете быстрее", 
+        apply: () => { player.fireRate = Math.max(5, player.fireRate - 2); }
+    },
+    { 
+        title: "МАКС. HP +20", 
+        desc: "Увеличивает макс. жизни и лечит", 
+        apply: () => { player.maxHp += 20; player.hp += 20; }
+    },
+    {
+        title: "ЛЕЧЕНИЕ",
+        desc: "Восстановить 50% здоровья",
+        apply: () => { player.hp = Math.min(player.maxHp, player.hp + (player.maxHp / 2)); }
+    }
+];
+
+function startGame() {
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('ui').style.display = 'block';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    
+    // Сброс
+    player.reset();
+    enemies = [];
+    // Сброс пуль в пуле
+    bulletPool.pool.forEach(b => b.active = false);
+    
+    scoreTime = 0;
+    killScore = 0;
+    spawnInterval = 90;
+    frameCount = 0;
+    
+    updateUI();
+    currentState = STATE.PLAYING;
+    animate();
 }
 
-// --- 6. ИГРОВОЙ ЦИКЛ ---
+function gameOver() {
+    currentState = STATE.GAME_OVER;
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('finalTime').innerText = scoreTime;
+    document.getElementById('finalScore').innerText = killScore;
+    document.getElementById('ui').style.display = 'none';
+}
+
+function showUpgradeScreen() {
+    const container = document.getElementById('upgradeContainer');
+    container.innerHTML = ''; // Очистка старых кнопок
+    document.getElementById('levelUpScreen').style.display = 'flex';
+
+    // Выбираем 3 случайных улучшения
+    for (let i = 0; i < 3; i++) {
+        const upgrade = upgradesList[Math.floor(Math.random() * upgradesList.length)];
+        
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        card.innerHTML = `
+            <div class="upgrade-title">${upgrade.title}</div>
+            <div class="upgrade-desc">${upgrade.desc}</div>
+        `;
+        
+        card.onclick = () => {
+            upgrade.apply(); // Применяем эффект
+            document.getElementById('levelUpScreen').style.display = 'none';
+            currentState = STATE.PLAYING; // Продолжаем игру
+            updateUI();
+        };
+        
+        container.appendChild(card);
+    }
+}
+
+function updateUI() {
+    document.getElementById('hpValue').innerText = Math.floor(player.hp);
+    document.getElementById('maxHpValue').innerText = player.maxHp;
+    document.getElementById('xpValue').innerText = player.xp;
+    document.getElementById('nextLevelXp').innerText = player.nextLevelXp;
+    document.getElementById('levelValue').innerText = player.level;
+    document.getElementById('scoreValue').innerText = killScore;
+}
+
+function drawGrid() {
+    ctx.beginPath();
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= canvas.width; x += 50) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+    for (let y = 0; y <= canvas.height; y += 50) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+    ctx.stroke();
+}
+
+// --- 6. ГЛАВНЫЙ ЦИКЛ ---
 function animate() {
-    if (isGameOver) return;
+    // Если игра закончена или в меню, цикл не останавливаем, но логику не обновляем
+    if (currentState === STATE.GAME_OVER || currentState === STATE.MENU) return;
 
     requestAnimationFrame(animate);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Сначала рисуем фон (сетку)
+    // Если уровень повышается, рисуем всё, но не обновляем (эффект паузы)
+    if (currentState === STATE.LEVEL_UP) {
+        // Можно затемнить фон
+        return; 
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid();
 
+    // 1. Таймер
     frameCount++;
     if (frameCount % 60 === 0) {
         scoreTime++;
         document.getElementById('timer').innerText = scoreTime;
-        if (scoreTime % 10 === 0) {
-            if (spawnInterval > minSpawnInterval) {
-                spawnInterval -= 5; 
-            }
-        }
+        // Усложнение
+        if (scoreTime % 15 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
 
+    // 2. Спавн врагов (с лимитом)
     spawnTimer++;
-    if (spawnTimer >= spawnInterval && enemies.length < 50) {
+    if (spawnTimer >= spawnInterval && enemies.length < MAX_ENEMIES) {
         enemies.push(new Enemy());
-        spawnTimer = 0; 
+        spawnTimer = 0;
     }
 
-    if (frameCount % 900 === 0) { 
-        healthPacks.push(new HealthPack());
-    }
-
-    // 2. Рисуем игровые объекты поверх сетки
+    // 3. Обновление объектов
     player.update();
     player.draw();
 
-    for (let i = healthPacks.length - 1; i >= 0; i--) {
-        const pack = healthPacks[i];
-        pack.draw();
-        if (Math.hypot(player.x - pack.x, player.y - pack.y) < player.radius + pack.radius) {
-            player.xp = Math.min(player.xp + 20, 100);
-            document.getElementById('xpValue').innerText = player.xp;
-            healthPacks.splice(i, 1);
-        }
-    }
+    bulletPool.updateAndDraw();
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        const bullet = bullets[i];
-        bullet.update();
-        bullet.draw();
-        if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
-            bullets.splice(i, 1);
-        }
-    }
-
+    // 4. Враги
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.update(player);
         enemy.draw();
 
+        // Столкновение с игроком
         const distToPlayer = Math.hypot(player.x - enemy.x, player.y - enemy.y);
         if (distToPlayer < player.radius + enemy.radius) {
-            player.xp -= enemy.damage;
+            player.hp -= enemy.damage;
             player.hitTimer = 10;
-            document.getElementById('xpValue').innerText = player.xp;
             enemies.splice(i, 1);
-            if (player.xp <= 0) gameOver();
+            updateUI();
+            if (player.hp <= 0) gameOver();
             continue;
         }
 
-        for (let j = bullets.length - 1; j >= 0; j--) {
-            const bullet = bullets[j];
-            const distToBullet = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+        // Столкновение с пулями из пула
+        for (let bullet of bulletPool.pool) {
+            if (!bullet.active) continue; // Пропускаем неактивные
 
+            const distToBullet = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
             if (distToBullet < enemy.radius + bullet.radius) {
-                bullets.splice(j, 1); 
-                enemy.hp--; 
+                bullet.active = false; // "Удаляем" пулю
+                enemy.hp -= bullet.damage; // Учитываем прокачанный урон
+
                 if (enemy.hp <= 0) {
                     enemies.splice(i, 1);
                     killScore++;
-                    document.getElementById('scoreValue').innerText = killScore;
+                    player.gainXp(enemy.xpReward); // Даем опыт
                 }
-                break;
+                break; // Пуля попала, выходим из цикла пуль
             }
         }
     }
 }
-
-animate();
