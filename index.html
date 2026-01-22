@@ -3,24 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Survivor Game</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Step 2: Player Movement</title>
+    <style>
+        /* СБРОС СТИЛЕЙ */
+        body {
+            margin: 0;
+            overflow: hidden; /* Убираем полосы прокрутки */
+            background-color: #2c3e50; /* Приятный темный фон */
+        }
+        canvas {
+            display: block; /* Убираем возможные отступы снизу */
+        }
+    </style>
 </head>
 <body>
 
-    <div id="ui">
-        Время: <span id="timer">0.0</span> сек<br>
-        Врагов убито: <span id="score">0</span>
-    </div>
+<canvas id="gameCanvas"></canvas>
 
-    <div id="gameOverScreen">
-        <h1>GAME OVER</h1>
-        <p>Вы продержались: <span id="finalTime">0</span> сек</p>
-        <button onclick="location.reload()">Играть снова</button>
-    </div>
+<script>
+    // --- 1. НАСТРОЙКА CANVAS ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-    <canvas id="gameCanvas"></canvas>
+    // Функция для установки размера во весь экран
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    
+    // Вызываем сразу и вешаем на событие изменения окна
+    resize();
+    window.addEventListener('resize', resize);
 
-    <script src="game.js"></script>
+
+    // --- 2. СИСТЕМА УПРАВЛЕНИЯ (Input Handler) ---
+    // Мы храним состояние клавиш: нажата (true) или нет (false)
+    const keys = {
+        w: false, a: false, s: false, d: false,
+        ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false
+    };
+
+    // Слушаем нажатие клавиши
+    window.addEventListener('keydown', (e) => {
+        keys[e.key] = true; 
+    });
+
+    // Слушаем отпускание клавиши
+    window.addEventListener('keyup', (e) => {
+        keys[e.key] = false;
+    });
+
+
+    // --- 3. КЛАСС ИГРОКА ---
+    class Player {
+        constructor() {
+            // Начальная позиция - центр экрана
+            this.x = canvas.width / 2;
+            this.y = canvas.height / 2;
+            
+            // Параметры игрока
+            this.radius = 20;       // Размер круга
+            this.color = '#e74c3c'; // Красный цвет
+            this.speed = 5;         // Скорость движения (пикселей за кадр)
+            this.hp = 100;          // Здоровье (пока просто цифра)
+        }
+
+        // Метод обновления логики (движение)
+        update() {
+            // Проверяем клавиши и меняем координаты
+            // Используем "ИЛИ" (||), чтобы работали и WASD, и Стрелки
+            if (keys['w'] || keys['ArrowUp']) {
+                this.y -= this.speed;
+            }
+            if (keys['s'] || keys['ArrowDown']) {
+                this.y += this.speed;
+            }
+            if (keys['a'] || keys['ArrowLeft']) {
+                this.x -= this.speed;
+            }
+            if (keys['d'] || keys['ArrowRight']) {
+                this.x += this.speed;
+            }
+
+            // Ограничение движения (Коллизия со стенами)
+            // Игрок не может уйти левее радиуса и правее ширины экрана минус радиус
+            if (this.x < this.radius) this.x = this.radius;
+            if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
+            
+            // То же самое для верха и низа
+            if (this.y < this.radius) this.y = this.radius;
+            if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
+        }
+
+        // Метод отрисовки
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); // Рисуем круг
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+    }
+
+    // Создаем экземпляр игрока
+    const player = new Player();
+
+
+    // --- 4. ИГРОВОЙ ЦИКЛ (Game Loop) ---
+    function gameLoop() {
+        // 1. Очищаем экран от предыдущего кадра
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 2. Обновляем логику всех объектов
+        player.update();
+
+        // 3. Рисуем все объекты
+        player.draw();
+
+        // 4. Просим браузер запустить эту же функцию снова при следующем обновлении экрана
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Запускаем цикл
+    gameLoop();
+
+</script>
+
 </body>
 </html>
