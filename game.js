@@ -17,7 +17,6 @@ let currentState = STATE.MENU;
 let frameCount = 0;
 let scoreTime = 0;
 let killScore = 0;
-// Обновили ключ сохранения под новое название игры
 let highScore = localStorage.getItem('neonSurvivorsArenaHighScore') || 0;
 let gameStage = 1;              
 let difficultyMultiplier = 1.0; 
@@ -172,6 +171,7 @@ class BulletPool {
                 if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { b.active = false; continue; }
                 
                 ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
+                // Трейл
                 ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(b.x, b.y);
                 ctx.lineTo(b.x - b.vx*2, b.y - b.vy*2); ctx.stroke();
@@ -230,8 +230,8 @@ class Player {
         this.level = 1; 
         this.xp = 0; 
         
-        // --- ИЗМЕНЕНИЕ: В 2 РАЗА БОЛЬШЕ XP ДЛЯ УРОВНЯ ---
-        this.nextLevelXp = 200; // Было 100, теперь 200 (бонусное окно в 2 раза реже)
+        // --- БАЛАНС: ЕЩЕ РЕЖЕ УРОВНИ ---
+        this.nextLevelXp = 400; // Было 200, теперь 400
         
         this.damage = 10; this.fireRate = 10; this.cooldown = 0;
         this.weaponType = 'DEFAULT'; this.hitTimer = 0;
@@ -251,10 +251,13 @@ class Player {
     tryShoot() {
         if (this.cooldown <= 0) {
             const bx = this.x + Math.cos(this.angle) * 25; const by = this.y + Math.sin(this.angle) * 25;
+            
             if (this.weaponType === 'SHOTGUN') {
-                bulletPool.get(bx, by, this.angle, 15, this.damage);
-                bulletPool.get(bx, by, this.angle - 0.2, 15, this.damage);
-                bulletPool.get(bx, by, this.angle + 0.2, 15, this.damage);
+                // --- БАЛАНС: ПОВЫШЕННЫЙ УРОН ДРОБОВИКА (x2) ---
+                const shotgunDamage = this.damage * 2; 
+                bulletPool.get(bx, by, this.angle, 15, shotgunDamage);
+                bulletPool.get(bx, by, this.angle - 0.2, 15, shotgunDamage);
+                bulletPool.get(bx, by, this.angle + 0.2, 15, shotgunDamage);
                 this.cooldown = 35;
             } else if (this.weaponType === 'RAPID') {
                 bulletPool.get(bx, by, this.angle, 18, 10); this.cooldown = 5;
@@ -267,6 +270,7 @@ class Player {
         this.xp += amount;
         if (this.xp >= this.nextLevelXp) {
             this.xp -= this.nextLevelXp; this.level++;
+            // Увеличиваем сложность набора следующего уровня
             this.nextLevelXp = Math.floor(this.nextLevelXp * 1.2);
             isMouseDown = false; sound.levelUp();
             currentState = STATE.LEVEL_UP; showUpgradeScreen();
@@ -496,7 +500,8 @@ function animate() {
 
     frameCount++;
     if (frameCount % 60 === 0) {
-        if (scoreTime > 0 && scoreTime % 60 === 0 && !bossActive) enemies.push(new Enemy(true));
+        // --- БАЛАНС: БОСС КАЖДЫЕ 180 СЕКУНД (3 МИНУТЫ) ---
+        if (scoreTime > 0 && scoreTime % 180 === 0 && !bossActive) enemies.push(new Enemy(true));
         scoreTime++;
         if (scoreTime % 10 === 0 && spawnInterval > 20) spawnInterval -= 5;
     }
@@ -532,7 +537,7 @@ function animate() {
             
             if (dist < enemy.radius + bulletRadius + 15) {
                 b.active = false; 
-                enemy.hp -= 10;
+                enemy.hp -= b.damage; // Учитываем усиленный урон (например, дробовика)
                 enemy.hitFlash = 3;
                 particlePool.explode(b.x, b.y, '#fff', 5);
                 floatText.show(enemy.x, enemy.y - 30, "HIT", "#00f3ff");
