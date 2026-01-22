@@ -3,60 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Survivor: Ultimate</title>
+    <title>CYBERPUNK SURVIVOR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <div class="scanlines"></div>
     <div id="damageOverlay"></div>
 
-    <div id="startScreen" class="screen">
-        <h1 class="neon-text">NEON SURVIVOR</h1>
-        <p>WASD - Движение | CLICK - Стрельба | ESC - Пауза</p>
-        <button id="startBtn">ЗАПУСК СИСТЕМЫ</button>
+    <div id="startScreen" class="screen cyber-panel">
+        <h1 class="cyber-glitch" data-text="CYBERPUNK SURVIVOR">CYBERPUNK SURVIVOR</h1>
+        <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | CLICK - ОГОНЬ</p>
+        <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
     </div>
 
-    <div id="pauseScreen" class="screen" style="display: none;">
-        <h1 class="neon-text" style="color: #f1c40f;">ПАУЗА</h1>
-        <button id="resumeBtn">ПРОДОЛЖИТЬ</button>
+    <div id="pauseScreen" class="screen cyber-panel" style="display: none;">
+        <h1 class="cyber-glitch" data-text="СИСТЕМА ОСТАНОВЛЕНА">СИСТЕМА ОСТАНОВЛЕНА</h1>
+        <button id="resumeBtn" class="cyber-button">ПРОДОЛЖИТЬ >></button>
     </div>
 
     <div id="ui">
         <div id="bossContainer" style="display: none;">
-            <div class="boss-label">ВНИМАНИЕ: БОСС</div>
-            <div class="bar-container hp-container" style="width: 600px; margin: 0 auto;">
-                <div class="bar-fill" id="bossHpBar" style="background: #ff0055; width: 100%;"></div>
+             <div class="boss-label cyber-text-small">// УГРОЗА ОМЕГА-КЛАССА //</div>
+            <div class="tech-bar-container">
+                <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
         </div>
 
         <div class="top-bar">
-            <div class="level-box">LVL <span id="levelValue">1</span></div>
-            <div class="bar-container xp-container">
-                <div class="bar-fill xp-fill" id="xpBar"></div>
+            <div class="level-box cyber-text">LVL.<span id="levelValue">1</span></div>
+             <div class="tech-bar-container xp-container">
+                <div class="tech-bar-fill xp-fill" id="xpBar"></div>
             </div>
         </div>
 
-        <div class="bar-container hp-container">
-            <div class="bar-text">HP <span id="hpText">100/100</span></div>
-            <div class="bar-fill hp-fill" id="hpBar"></div>
+        <div class="hp-wrapper tech-panel-small">
+            <div class="bar-text cyber-text-small">HP СТАТУС: <span id="hpText">100/100</span></div>
+            <div class="tech-bar-container">
+                <div class="tech-bar-fill hp-fill" id="hpBar"></div>
+            </div>
         </div>
 
-        <div class="stats">
-            <div>ОЧКИ: <span id="scoreValue">0</span></div>
-            <div>ВРЕМЯ: <span id="timer">0</span></div>
+        <div class="stats tech-panel-small">
+            <div>ДАННЫЕ: <span id="scoreValue" class="cyber-highlight">0</span></div>
+            <div>ВРЕМЯ: <span id="timer" class="cyber-highlight">0</span></div>
         </div>
     </div>
 
-    <div id="levelUpScreen" class="screen" style="display: none;">
-        <h2 class="neon-text">СИСТЕМА ОБНОВЛЕНА</h2>
+    <div id="levelUpScreen" class="screen cyber-panel" style="display: none;">
+        <h2 class="cyber-text">>> ОБНОВЛЕНИЕ ПРОШИВКИ <<</h2>
         <div id="upgradeContainer"></div>
     </div>
 
-    <div id="gameOverScreen" class="screen" style="display: none;">
-        <h1 class="neon-text" style="color: #ff3333;">КРИТИЧЕСКИЙ СБОЙ</h1>
-        <p>Выживание: <span id="finalTime">0</span> сек</p>
-        <p>Уничтожено: <span id="finalScore">0</span></p>
-        <button onclick="location.reload()">ПЕРЕЗАГРУЗКА</button>
+    <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
+        <h1 class="cyber-glitch alert-text" data-text="КРИТИЧЕСКИЙ СБОЙ">КРИТИЧЕСКИЙ СБОЙ</h1>
+        <p class="cyber-subtext">ВРЕМЯ В СЕТИ: <span id="finalTime" class="cyber-highlight">0</span> СЕК</p>
+        <p class="cyber-subtext">УСТРАНЕНО УГРОЗ: <span id="finalScore" class="cyber-highlight">0</span></p>
+        <button onclick="location.reload()" class="cyber-button">ПЕРЕЗАГРУЗКА СИСТЕМЫ</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
