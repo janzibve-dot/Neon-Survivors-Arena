@@ -1,16 +1,18 @@
-
+/* Базовые настройки */
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #2c3e50;
-    font-family: Arial, sans-serif;
+    background-color: #111; /* Почти черный фон для неона */
+    /* Более современный стек шрифтов */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 canvas {
     display: block;
-    cursor: default; /* Обычный курсор */
+    cursor: default;
 }
 
+/* Интерфейс */
 #ui {
     position: absolute;
     top: 20px;
@@ -20,41 +22,61 @@ canvas {
     font-weight: bold;
     pointer-events: none;
     line-height: 1.6;
-    text-shadow: 1px 1px 2px black;
+    /* Неоновое свечение текста */
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff;
 }
 
-#xpValue { color: #e74c3c; }
-#scoreValue { color: #f1c40f; }
-#timer { color: #3498db; }
+/* Цвета для значений с дополнительным свечением */
+#xpValue { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; }
+#scoreValue { color: #f1c40f; text-shadow: 0 0 10px #f1c40f; }
+#timer { color: #3498db; text-shadow: 0 0 10px #3498db; }
 
+/* Экран проигрыша */
 #gameOverScreen {
     display: none;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    /* Полупрозрачный черный фон */
     background: rgba(0, 0, 0, 0.9);
     padding: 40px;
     border-radius: 15px;
     text-align: center;
     color: white;
-    border: 2px solid #e74c3c;
+    /* Неоновая рамка */
+    border: 3px solid #e74c3c;
+    box-shadow: 0 0 20px #e74c3c;
     min-width: 250px;
 }
 
-h1 { margin-top: 0; color: #e74c3c; }
+h1 {
+    margin-top: 0;
+    color: #e74c3c;
+    text-shadow: 0 0 15px #e74c3c;
+    font-size: 3em;
+}
+
+p {
+    font-size: 1.2em;
+}
 
 button {
-    padding: 15px 30px;
-    font-size: 18px;
+    padding: 15px 40px;
+    font-size: 20px;
     background-color: #27ae60;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    margin-top: 15px;
+    margin-top: 25px;
+    font-weight: bold;
+    /* Свечение кнопки */
+    box-shadow: 0 0 10px #27ae60;
+    transition: 0.3s;
 }
 
 button:hover {
     background-color: #2ecc71;
+    box-shadow: 0 0 20px #2ecc71;
 }
