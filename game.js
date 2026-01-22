@@ -14,25 +14,17 @@ resize();
 window.addEventListener('resize', resize);
 
 
-// --- 2. УПРАВЛЕНИЕ (Input Handler) ---
-// Объект для хранения состояния клавиш (нажата или нет)
-const keys = {
-    w: false, a: false, s: false, d: false,
-    ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false
-};
+// --- 2. УПРАВЛЕНИЕ (ИСПРАВЛЕНО) ---
+// Храним состояние клавиш по их коду (KeyW, ArrowUp и т.д.)
+// Это позволяет игнорировать раскладку (RU/EN)
+const keys = {};
 
-// Если клавишу нажали — ставим true
 window.addEventListener('keydown', (e) => {
-    if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
-        keys[e.key] = true;
-    }
+    keys[e.code] = true;
 });
 
-// Если клавишу отпустили — ставим false
 window.addEventListener('keyup', (e) => {
-    if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
-        keys[e.key] = false;
-    }
+    keys[e.code] = false;
 });
 
 
@@ -47,33 +39,29 @@ class Player {
         this.radius = 20;       // Радиус круга
         this.color = '#3498db'; // Ярко-синий цвет
         this.speed = 5;         // Скорость перемещения
-        this.hp = 100;          // Здоровье (заготовка на будущее)
+        this.hp = 100;          // Здоровье
     }
 
     update() {
         // Логика движения
-        // Используем || (ИЛИ), чтобы работали и буквы, и стрелки
-        if (keys['w'] || keys['W'] || keys['ArrowUp']) {
+        // KeyW = физическая клавиша W (даже если это Ц)
+        if (keys['KeyW'] || keys['ArrowUp']) {
             this.y -= this.speed;
         }
-        if (keys['s'] || keys['S'] || keys['ArrowDown']) {
+        if (keys['KeyS'] || keys['ArrowDown']) {
             this.y += this.speed;
         }
-        if (keys['a'] || keys['A'] || keys['ArrowLeft']) {
+        if (keys['KeyA'] || keys['ArrowLeft']) {
             this.x -= this.speed;
         }
-        if (keys['d'] || keys['D'] || keys['ArrowRight']) {
+        if (keys['KeyD'] || keys['ArrowRight']) {
             this.x += this.speed;
         }
 
         // Логика границ (Коллизия со стенами)
-        // Не даем уйти влево (меньше радиуса)
         if (this.x < this.radius) this.x = this.radius;
-        // Не даем уйти вправо (ширина экрана минус радиус)
         if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
-        // Верх
         if (this.y < this.radius) this.y = this.radius;
-        // Низ
         if (this.y > canvas.height - this.radius) this.y = canvas.height - this.radius;
     }
 
@@ -87,22 +75,20 @@ class Player {
     }
 }
 
-// Создаем игрока один раз перед циклом
+// Создаем игрока
 const player = new Player();
 
 
-// --- 4. ИГРОВОЙ ЦИКЛ (Game Loop) ---
+// --- 4. ИГРОВОЙ ЦИКЛ ---
 function animate() {
-    // 1. Очищаем экран (стираем прошлый кадр)
+    // Очищаем экран
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Обновляем данные
+    // Обновляем и рисуем игрока
     player.update();
-
-    // 3. Рисуем
     player.draw();
 
-    // 4. Зацикливаем (браузер сам вызовет эту функцию ~60 раз в секунду)
+    // Зацикливаем
     requestAnimationFrame(animate);
 }
 
