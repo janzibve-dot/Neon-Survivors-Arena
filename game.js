@@ -52,11 +52,10 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => keys[e.code] = false);
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
-// Обработка мыши (ЛКМ и ПКМ)
 window.addEventListener('mousedown', (e) => {
     if (currentState !== STATE.PLAYING) return;
-    if (e.button === 0) isMouseDown = true; // ЛКМ
-    if (e.button === 2) player.fireMissile(); // ПКМ
+    if (e.button === 0) isMouseDown = true; 
+    if (e.button === 2) player.fireMissile(); 
 });
 window.addEventListener('mouseup', () => { isMouseDown = false; });
 
@@ -95,34 +94,73 @@ class SoundManager {
         setTimeout(() => this.playTone(554, 'sine', 0.3, 0.1), 100);
         setTimeout(() => this.playTone(659, 'sine', 0.5, 0.1), 200);
     }
-    danger() { 
-        this.playTone(800, 'square', 0.1, 0.2);
-        setTimeout(() => this.playTone(800, 'square', 0.1, 0.2), 150);
-        setTimeout(() => this.playTone(800, 'square', 0.1, 0.2), 300);
-    }
 }
 const sound = new SoundManager();
 
-// --- 3. ЭФФЕКТЫ ---
+// --- 3. ФОН (ЗВЕЗДНОЕ НЕБО С КОМЕТАМИ) ---
 class Background {
     constructor() {
         this.stars = [];
-        for(let i=0; i<100; i++) this.stars.push({
-            x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-            size: Math.random() * 3 + 1, speed: Math.random() * 1.5 + 0.5,
-            color: Math.random() > 0.5 ? '#00f3ff' : '#39ff14' 
-        });
+        this.comets = [];
+        // Создаем звезды для спирали
+        for(let i=0; i<300; i++) {
+            this.stars.push({
+                dist: Math.random() * canvas.width, // Расстояние от центра
+                angle: Math.random() * Math.PI * 2,
+                size: Math.random() * 2,
+                color: Math.random() > 0.8 ? '#00f3ff' : '#ffffff'
+            });
+        }
     }
     update() {
+        // Вращение звезд
         this.stars.forEach(s => {
-            s.y += s.speed;
-            if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+            s.angle += 0.0005; // Медленное вращение
+            s.dist -= 0.1; // Легкое притяжение к центру
+            if(s.dist < 0) s.dist = canvas.width;
         });
+
+        // Кометы
+        if (Math.random() < 0.01) { // Шанс появления кометы
+            this.comets.push({
+                x: Math.random() * canvas.width, 
+                y: -10, 
+                vx: (Math.random() - 0.5) * 2, 
+                vy: Math.random() * 5 + 2,
+                life: 100
+            });
+        }
+        for(let i = this.comets.length -1; i>=0; i--) {
+            let c = this.comets[i];
+            c.x += c.vx; c.y += c.vy; c.life--;
+            if (c.life <= 0) this.comets.splice(i, 1);
+        }
     }
     draw() {
+        // Центр экрана
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        // Рисуем звезды
         this.stars.forEach(s => {
-            ctx.fillStyle = s.color; ctx.globalAlpha = 0.3;
-            ctx.fillRect(s.x, s.y, s.size, s.size);
+            const x = cx + Math.cos(s.angle) * s.dist;
+            const y = cy + Math.sin(s.angle) * s.dist;
+            
+            // Только если на экране
+            if (x > 0 && x < canvas.width && y > 0 && y < canvas.height) {
+                ctx.fillStyle = s.color; ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+                ctx.fillRect(x, y, s.size, s.size);
+            }
+        });
+
+        // Рисуем кометы
+        ctx.globalAlpha = 0.8;
+        this.comets.forEach(c => {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(c.x, c.y, 2, 0, Math.PI*2); ctx.fill();
+            // Хвост
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - c.vx*10, c.y - c.vy*10); ctx.stroke();
         });
         ctx.globalAlpha = 1.0;
     }
@@ -131,11 +169,11 @@ const bg = new Background();
 
 class FloatingText {
     constructor() { this.pool = []; }
-    show(x, y, text, color) { this.pool.push({x, y, text, color, life: 30}); }
+    show(x, y, text, color) { this.pool.push({x, y, text, color, life: 40}); }
     updateAndDraw() {
         ctx.font = "bold 18px 'Share Tech Mono', monospace";
         for (let i = this.pool.length - 1; i >= 0; i--) {
-            let t = this.pool[i]; t.y -= 1; t.life--;
+            let t = this.pool[i]; t.y -= 0.5; t.life--;
             ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
             if (t.life <= 0) this.pool.splice(i, 1);
         }
@@ -244,7 +282,6 @@ class BulletPool {
 }
 const bulletPool = new BulletPool(150);
 
-// РАКЕТЫ (обычные)
 class RocketPool {
     constructor(size) {
         this.pool = [];
@@ -277,7 +314,6 @@ class RocketPool {
 }
 const rocketPool = new RocketPool(50);
 
-// САМОНАВОДЯЩИЕСЯ РАКЕТЫ (ПКМ)
 class HomingMissilePool {
     constructor(size) {
         this.pool = [];
@@ -376,16 +412,15 @@ class Player {
         this.damage = 10; this.fireRate = 10; this.cooldown = 0;
         this.weaponType = 'DEFAULT'; this.hitTimer = 0;
         
-        // Инвентарь
         this.missiles = 3; 
         this.shields = 1; 
-        this.invincibleTimer = 0; // Таймер бессмертия
+        this.invincibleTimer = 0; 
     }
     
     activateShield() {
         if (this.shields > 0 && this.invincibleTimer <= 0) {
             this.shields--;
-            this.invincibleTimer = 300; // 5 секунд (60 * 5)
+            this.invincibleTimer = 300; 
             sound.shield();
             floatText.show(this.x, this.y - 40, "SHIELD ACTIVE", "#00f3ff");
             updateUI();
@@ -394,7 +429,6 @@ class Player {
     
     fireMissile() {
         if (this.missiles > 0) {
-            // Ищем ближайшего
             let target = null;
             let minDist = 9999;
             for (let e of enemies) {
@@ -452,7 +486,7 @@ class Player {
         updateUI();
     }
     takeDamage(amount) {
-        if (this.invincibleTimer > 0) return; // Бессмертие
+        if (this.invincibleTimer > 0) return; 
         this.hp -= amount; this.hitTimer = 10; sound.hit();
         const overlay = document.getElementById('damageOverlay');
         overlay.style.opacity = '0.8'; setTimeout(() => overlay.style.opacity = '0', 150);
@@ -462,14 +496,12 @@ class Player {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // Цвет игрока (если щит активен - другой цвет)
         let glowColor = this.invincibleTimer > 0 ? '#ffffff' : '#00f3ff';
         if (this.hitTimer > 0) glowColor = '#ff0000';
         
         ctx.shadowBlur = 25; ctx.shadowColor = glowColor;
         ctx.fillStyle = this.hitTimer > 0 ? '#ffffff' : this.color;
         
-        // Щит (круг вокруг игрока)
         if (this.invincibleTimer > 0) {
             ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.stroke();
@@ -606,13 +638,10 @@ const upgradesList = [
 function spawnBoss() {
     const boss = new Enemy(true);
     enemies.push(boss);
-    document.getElementById('shiftAlert').style.display = 'flex';
     sound.danger(); 
-    setTimeout(() => { document.getElementById('shiftAlert').style.display = 'none'; }, 2000);
 }
 
 function spawnLoot(x, y) {
-    // 40% Ракета, 10% Щит
     const rand = Math.random();
     let type = null;
     if (rand < 0.4) type = 'MISSILE';
@@ -623,6 +652,8 @@ function spawnLoot(x, y) {
 
 function startGame() {
     sound.init();
+    if (sound.ctx.state === 'suspended') sound.ctx.resume(); // ПРИНУДИТЕЛЬНЫЙ ЗАПУСК ЗВУКА
+
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     document.getElementById('dashboard').style.display = 'flex'; 
@@ -631,7 +662,6 @@ function startGame() {
     
     player.reset(); enemies = []; lootPool = []; bossActive = false; 
     document.getElementById('bossContainer').style.display = 'none';
-    document.getElementById('shiftAlert').style.display = 'none';
     
     gameStage = 1;
     difficultyMultiplier = 1.0;
@@ -699,11 +729,9 @@ function updateUI() {
     document.getElementById('levelValue').innerText = player.level;
     document.getElementById('scoreValue').innerText = killScore;
     
-    // Инвентарь
     document.getElementById('ammoValue').innerText = player.missiles;
     document.getElementById('shieldValue').innerText = player.shields;
     
-    // Полоска щита (визуализация времени)
     if (player.invincibleTimer > 0) {
         const shieldP = (player.invincibleTimer / 300) * 100;
         document.getElementById('shieldActiveBar').style.width = shieldP + '%';
@@ -755,13 +783,11 @@ function animate() {
         enemies.push(new Enemy()); spawnTimer = 0; 
     }
 
-    // Обновляем щит визуально каждый кадр
     if (player.invincibleTimer > 0) updateUI();
 
     particlePool.updateAndDraw();
     floatText.updateAndDraw();
     
-    // ЛУТ
     for (let i = lootPool.length - 1; i >= 0; i--) {
         let box = lootPool[i];
         box.update(); box.draw();
@@ -796,7 +822,6 @@ function animate() {
             if (!enemy.isBoss) enemies.splice(i, 1); continue;
         }
 
-        // ПУЛИ
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
@@ -810,7 +835,7 @@ function animate() {
                     enemies.splice(i, 1); killScore++; player.gainXp(enemy.xpReward);
                     sound.enemyDeath(); particlePool.explode(enemy.x, enemy.y, enemy.color, 30);
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
-                    if (Math.random() < 0.5) spawnLoot(enemy.x, enemy.y); // 50% шанс лута
+                    if (Math.random() < 0.5) spawnLoot(enemy.x, enemy.y);
 
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
@@ -829,7 +854,6 @@ function animate() {
             }
         }
 
-        // РАКЕТЫ
         for (let r of rocketPool.pool) {
             if (!r.active) continue;
             const dist = Math.hypot(r.x - enemy.x, r.y - enemy.y);
@@ -858,7 +882,6 @@ function animate() {
             }
         }
 
-        // РАКЕТЫ ПКМ (HOMING)
         for (let m of homingPool.pool) {
             if (!m.active) continue;
             const dist = Math.hypot(m.x - enemy.x, m.y - enemy.y);
