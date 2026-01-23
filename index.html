@@ -2,114 +2,89 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon-Survivors-Arena</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>Neon Survivors Arena</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="scanlines"></div>
-    <div id="damageOverlay"></div>
+    <div id="retro-bg">RETRO GAMES</div>
 
-    <div id="dashboard">
-        <div class="dash-section">
-            <div class="dash-item">
-                <div class="dash-label">LVL</div>
-                <div id="levelValue" class="dash-value cyber-yellow">1</div>
-            </div>
-            <div class="dash-item" style="width: 140px;"> <div class="dash-label">HP STATUS</div>
-                <div class="mini-bar-container">
-                    <div id="hpBar" class="mini-bar-fill hp-fill"></div>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-dashboard">
+            <div class="stat-group">
+                <span class="label">HP:</span>
+                <div class="bar-container">
+                    <div id="hp-bar-fill"></div>
                 </div>
-                <div id="hpText" class="dash-subtext">100/100</div>
+                <span id="hp-text">100/100</span>
+            </div>
+            
+            <div class="stat-group">
+                <span class="label">LVL:</span>
+                <div class="bar-container">
+                    <div id="xp-bar-fill"></div>
+                </div>
+                <span id="lvl-text">1</span>
+            </div>
+
+            <div class="stat-group">
+                <span class="label">TIME:</span>
+                <span id="timer-text" style="color: #ffcc00;">60</span>
+            </div>
+
+            <div class="stat-group resource-group">
+                <span class="icon">⭐</span>
+                <span id="star-count">0</span>
+            </div>
+            <div class="stat-group resource-group">
+                <span class="icon">💊</span>
+                <span id="medkit-count">0</span>
+            </div>
+
+            <div class="stat-group">
+                <span class="label">Rockets:</span>
+                <span id="missile-count">0</span>
+            </div>
+
+            <div class="stat-group">
+                <div id="shield-indicator" class="shield-off">SHIELD</div>
             </div>
         </div>
 
-        <div class="dash-section">
-            <div class="dash-item">
-                <div class="dash-label">BOSS TIMER</div>
-                <div id="bossTimer" class="dash-value cyber-alert" style="font-size: 1.8em;">60</div>
+        <div id="boss-container" class="hidden">
+            <div class="boss-label">⚠️ BOSS BATTLE ⚠️</div>
+            <div class="boss-bar-bg">
+                <div id="boss-hp-fill"></div>
             </div>
-            <div class="dash-item">
-                <div class="dash-label">SCORE</div>
-                <div id="scoreValue" class="dash-value">0</div>
-            </div>
+            <span id="boss-hp-text">1000/1000</span>
         </div>
 
-        <div class="dash-section">
-            <div class="inventory-slot">
-                <div class="inv-icon">🚀</div>
-                <div id="ammoValue" class="inv-count">0</div>
-                <div class="inv-key">[RMB]</div>
-            </div>
-            <div class="inventory-slot" id="shieldSlot">
-                <div class="inv-icon">🛡️</div>
-                <div id="shieldValue" class="inv-count">0</div>
-                <div class="inv-key">[SPACE]</div>
-                <div id="shieldActiveBar"></div>
-            </div>
+        <div id="level-up-screen" class="hidden">
+            <h2>LEVEL UP!</h2>
+            <div id="upgrade-options"></div>
         </div>
-    </div>
 
-    <div id="hackMessage" style="display: none;">
-        <h1 class="glitch-hack">>> SYSTEM HACKED <<</h1>
-        <p class="hack-sub">ВРАГИ НЕЙТРАЛИЗОВАНЫ</p>
-    </div>
+        <div id="game-over-screen" class="hidden">
+            <h1>GAME OVER</h1>
+            <p>Score: <span id="final-score">0</span></p>
+            <button onclick="location.reload()">RESTART</button>
+        </div>
 
-    <div id="stageAnnouncement" style="display: none;">
-        <div class="stage-box">
-            <h1 class="cyber-glitch" style="font-size: 5em; color: var(--cyber-cyan);">УРОВЕНЬ <span id="announcementStage">2</span></h1>
-            <p class="cyber-text-small" style="color: var(--cyber-yellow);">СЛОЖНОСТЬ ПОВЫШЕНА (+5%)</p>
+        <div id="controls-info">
+            <h3>УПРАВЛЕНИЕ</h3>
+            <ul>
+                <li><b>WASD</b> — Движение</li>
+                <li><b>Мышь</b> — Прицел</li>
+                <li><b>ЛКМ</b> — Стрельба</li>
+                <li><b>ПКМ</b> — Ракета</li>
+                <li><b>Пробел</b> — Щит</li>
+                <li><b>1</b> — Аптечка</li>
+            </ul>
         </div>
     </div>
 
-    <div id="startScreen" class="screen cyber-panel">
-        
-        <div class="retro-sign">
-            <span class="neon-flicker-slow">R</span>ETR<span class="neon-flicker-fast">O</span>
-            <span class="neon-broken">G</span>AMES
-        </div>
-
-        <h1 class="cyber-glitch" data-text="Neon-Survivors-Arena" style="margin-top: 0;">Neon-Survivors-Arena</h1>
-        
-        <div class="controls-info">
-            <p><span class="key-hint">WASD</span> Движение</p>
-            <p><span class="key-hint">ЛКМ</span> Огонь (Авто)</p>
-            <p><span class="key-hint">ПКМ</span> Самонаводящаяся Ракета</p>
-            <p><span class="key-hint">SPACE</span> Использовать Щит (5 сек)</p>
-        </div>
-        <p class="cyber-text-small" style="color: var(--cyber-yellow); margin-top:20px; font-size: 1.2em;">РЕКОРД: <span id="menuHighScore">0</span></p>
-        <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
-    </div>
-
-    <div id="pauseScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="cyber-glitch" data-text="PAUSE">PAUSE</h1>
-        <button id="resumeBtn" class="cyber-button">ПРОДОЛЖИТЬ >></button>
-    </div>
-
-    <div id="ui">
-        <div id="bossContainer" style="display: none;">
-             <div class="boss-label cyber-text-small">// БОСС УРОВНЯ <span id="bossLvl">1</span> //</div>
-            <div class="tech-bar-container">
-                <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="levelUpScreen" class="screen cyber-panel" style="display: none;">
-        <h2 class="cyber-text">>> МОДУЛЬ ОБНОВЛЕНИЯ <<</h2>
-        <div id="upgradeContainer"></div>
-    </div>
-
-    <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="cyber-glitch alert-text" data-text="КРИТИЧЕСКИЙ СБОЙ">КРИТИЧЕСКИЙ СБОЙ</h1>
-        <p class="cyber-subtext">ФИНАЛЬНЫЙ СЧЕТ: <span id="finalScore" class="cyber-highlight">0</span></p>
-        <p class="cyber-subtext">ДОСТИГНУТ УРОВЕНЬ: <span id="finalStage" class="cyber-highlight">0</span></p>
-        <button onclick="location.reload()" class="cyber-button">ПЕРЕЗАГРУЗКА</button>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
     <script src="game.js"></script>
 </body>
 </html>
