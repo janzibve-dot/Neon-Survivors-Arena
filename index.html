@@ -14,7 +14,7 @@
 
         <div id="ui-dashboard">
             <div class="stat-group">
-                <span class="label">HP:</span>
+                <span class="label">HP</span>
                 <div class="bar-container">
                     <div id="hp-bar-fill"></div>
                 </div>
@@ -22,16 +22,16 @@
             </div>
             
             <div class="stat-group">
-                <span class="label">LVL:</span>
-                <div class="bar-container">
+                <span class="label">LVL</span>
+                <div class="bar-container" style="width: 80px;">
                     <div id="xp-bar-fill"></div>
                 </div>
                 <span id="lvl-text">1</span>
             </div>
 
             <div class="stat-group">
-                <span class="label">TIME:</span>
-                <span id="timer-text" style="color: #ffcc00;">60</span>
+                <span class="label">TIME</span>
+                <span id="timer-text">60</span>
             </div>
 
             <div class="stat-group resource-group">
@@ -44,7 +44,7 @@
             </div>
 
             <div class="stat-group">
-                <span class="label">Rockets:</span>
+                <span class="label">ROCKETS</span>
                 <span id="missile-count">0</span>
             </div>
 
@@ -54,7 +54,7 @@
         </div>
 
         <div id="boss-container" class="hidden">
-            <div class="boss-label">⚠️ BOSS BATTLE ⚠️</div>
+            <div class="boss-label">⚠️ WARNING: BOSS ⚠️</div>
             <div class="boss-bar-bg">
                 <div id="boss-hp-fill"></div>
             </div>
@@ -62,25 +62,25 @@
         </div>
 
         <div id="level-up-screen" class="hidden">
-            <h2>LEVEL UP!</h2>
+            <h2>SYSTEM UPGRADE</h2>
             <div id="upgrade-options"></div>
         </div>
 
         <div id="game-over-screen" class="hidden">
-            <h1>GAME OVER</h1>
-            <p>Score: <span id="final-score">0</span></p>
-            <button onclick="location.reload()">RESTART</button>
+            <h1>SYSTEM FAILURE</h1>
+            <p>SCORE: <span id="final-score">0</span></p>
+            <button onclick="location.reload()">REBOOT</button>
         </div>
 
         <div id="controls-info">
-            <h3>УПРАВЛЕНИЕ</h3>
+            <h3>CONTROLS</h3>
             <ul>
-                <li><b>WASD</b> — Движение</li>
-                <li><b>Мышь</b> — Прицел</li>
-                <li><b>ЛКМ</b> — Стрельба</li>
-                <li><b>ПКМ</b> — Ракета</li>
-                <li><b>Пробел</b> — Щит</li>
-                <li><b>1</b> — Аптечка</li>
+                <li>[WASD] Move</li>
+                <li>[MOUSE] Aim</li>
+                <li>[LMB] Shoot</li>
+                <li>[RMB] Rocket</li>
+                <li>[SPACE] Shield</li>
+                <li>[1] Medkit</li>
             </ul>
         </div>
     </div>
