@@ -2,7 +2,7 @@ body {
     margin: 0;
     overflow: hidden;
     background-color: #050505;
-    font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+    font-family: 'Courier New', Courier, monospace; /* Моноширинный шрифт для ретро стиля */
     color: white;
 }
 
@@ -10,64 +10,59 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    z-index: 10; /* Поверх фона */
 }
 
 canvas {
     display: block;
 }
 
-/* === ФОНОВАЯ ВЫВЕСКА (RETRO GAMES) === */
+/* === ФОНОВАЯ ВЫВЕСКА === */
 #retro-bg {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 10vw; /* Огромный текст */
+    font-size: 12vw;
     font-weight: 900;
-    color: rgba(255, 255, 255, 0.1); /* Прозрачный белый, чтобы был виден */
-    text-transform: uppercase;
-    z-index: 0; /* На заднем плане */
-    pointer-events: none; /* Чтобы не мешал кликать */
+    color: rgba(20, 20, 20, 0.5);
+    z-index: 0;
+    pointer-events: none;
     white-space: nowrap;
-    text-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
-    animation: flicker 3s infinite alternate;
+    text-shadow: 0 0 10px rgba(255, 0, 255, 0.1);
+    animation: flicker 4s infinite;
+    font-family: sans-serif; /* Для вывески можно оставить жирный санс */
 }
 
-/* Анимация поломки неона */
 @keyframes flicker {
-    0%, 18%, 22%, 25%, 53%, 57%, 100% {
-        text-shadow: 
-        0 0 10px rgba(255, 0, 255, 0.4),
-        0 0 20px rgba(255, 0, 255, 0.2);
-        opacity: 0.8;
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        opacity: 0.1;
+        text-shadow: none;
     }
     20%, 24%, 55% {
-        text-shadow: none;
-        opacity: 0.1;
+        opacity: 0.3;
+        text-shadow: 0 0 20px #ff00ff;
+        color: rgba(50, 0, 50, 0.5);
     }
 }
 
-/* === ВЕРХНЯЯ ПАНЕЛЬ === */
+/* === HUD (Верхняя панель) === */
 #ui-dashboard {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 60px;
+    height: 50px;
     background: rgba(0, 0, 0, 0.8);
-    border-bottom: 2px solid #00ffcc;
+    border-bottom: 1px solid #00ffcc;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 30px; /* Расстояние между элементами */
-    padding: 0 20px;
-    box-sizing: border-box;
+    gap: 25px;
     z-index: 20;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
-    text-transform: uppercase;
     color: #00ffcc;
+    letter-spacing: 1px;
 }
 
 .stat-group {
@@ -76,119 +71,99 @@ canvas {
     gap: 8px;
 }
 
-.resource-group {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 8px;
-    border-radius: 5px;
-}
-
-.resource-group .icon {
-    font-size: 20px;
+.label {
+    color: #888;
 }
 
 .bar-container {
     width: 100px;
-    height: 15px;
-    background: #333;
-    border: 1px solid #555;
-    position: relative;
+    height: 10px;
+    background: #222;
+    border: 1px solid #444;
 }
 
-#hp-bar-fill {
-    width: 100%;
-    height: 100%;
-    background: #ff3333;
-    transition: width 0.2s;
-}
-
-#xp-bar-fill {
-    width: 0%;
-    height: 100%;
-    background: #33cc33;
-    transition: width 0.2s;
-}
+#hp-bar-fill { height: 100%; width: 100%; background: #ff3333; transition: width 0.1s; }
+#xp-bar-fill { height: 100%; width: 0%; background: #33cc33; transition: width 0.2s; }
 
 #shield-indicator {
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 14px;
+    padding: 2px 6px;
+    border: 1px solid #444;
+    font-size: 12px;
 }
-.shield-on { background: #00ccff; color: #000; box-shadow: 0 0 10px #00ccff; }
-.shield-off { background: #333; color: #777; }
+.shield-on { background: #00ccff; color: #000; box-shadow: 0 0 5px #00ccff; border-color: #00ccff !important; }
+.shield-off { background: #111; color: #555; }
 
-/* === ШКАЛА БОССА === */
+/* === БОСС БАР === */
 #boss-container {
     position: absolute;
-    top: 70px; /* Сразу под верхней панелью */
+    top: 60px;
     left: 50%;
     transform: translateX(-50%);
-    width: 600px;
-    max-width: 90%;
-    text-align: center;
+    width: 500px;
     z-index: 15;
+    text-align: center;
 }
 
 .boss-label {
     color: #ff0055;
-    font-size: 20px;
-    font-weight: 800;
-    margin-bottom: 4px;
-    text-shadow: 0 0 10px #ff0055;
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 2px;
+    text-shadow: 0 0 5px #ff0055;
     letter-spacing: 2px;
 }
 
 .boss-bar-bg {
     width: 100%;
-    height: 25px;
-    background: #220011;
-    border: 3px solid #ff0055;
-    position: relative;
-    box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
+    height: 15px;
+    background: #220000;
+    border: 2px solid #ff0055;
 }
 
 #boss-hp-fill {
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, #ff0055, #ff6699);
-    transition: width 0.1s linear;
+    background: #ff0055;
+    box-shadow: 0 0 10px #ff0055;
+    transition: width 0.1s;
 }
 
 #boss-hp-text {
-    display: block;
-    margin-top: 2px;
-    font-size: 14px;
-    color: white;
-    text-shadow: 1px 1px 2px black;
-    font-weight: bold;
+    font-size: 12px;
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
 }
 
-.hidden {
-    display: none !important;
-}
+/* === ЭКРАНЫ === */
+.hidden { display: none !important; }
 
-/* Окна и текст */
-h2, h1 { color: #00ffcc; text-shadow: 0 0 10px #00ffcc; margin-top: 0; }
 #level-up-screen, #game-over-screen {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(10, 10, 20, 0.95); border: 4px solid #00ffcc;
-    padding: 40px; text-align: center; border-radius: 15px; z-index: 50;
-}
-.upgrade-card {
-    background: #222; border: 2px solid #444; margin: 10px 0; padding: 15px;
-    cursor: pointer; transition: 0.2s; color: white;
-}
-.upgrade-card:hover { background: #333; border-color: #00ffcc; transform: scale(1.02); }
-button {
-    background: #00ffcc; border: none; padding: 15px 30px;
-    font-size: 20px; font-weight: bold; cursor: pointer; margin-top: 20px;
+    background: #000; border: 2px solid #00ffcc;
+    padding: 30px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+    z-index: 50;
 }
 
-/* Управление */
-#controls-info {
-    position: absolute; bottom: 20px; left: 20px;
-    background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; color: #ccc; font-size: 13px;
-    pointer-events: none;
+h2, h1 { color: #00ffcc; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 2px; }
+
+.upgrade-card {
+    background: #111; border: 1px solid #333; margin: 10px 0; padding: 10px;
+    cursor: pointer; color: #eee; text-align: left;
 }
-#controls-info h3 { color: #00ffcc; margin: 0 0 5px 0; }
-#controls-info ul { margin: 0; padding-left: 20px; }
+.upgrade-card:hover { border-color: #00ffcc; background: #1a1a1a; }
+.upgrade-card h3 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; }
+.upgrade-card p { margin: 0; font-size: 12px; color: #aaa; }
+
+button {
+    background: transparent; border: 2px solid #00ffcc; color: #00ffcc;
+    padding: 10px 20px; font-family: inherit; font-size: 18px; cursor: pointer;
+    text-transform: uppercase; font-weight: bold;
+}
+button:hover { background: #00ffcc; color: #000; }
+
+#controls-info {
+    position: absolute; bottom: 10px; left: 10px;
+    color: #555; font-size: 12px; pointer-events: none;
+}
+#controls-info h3 { color: #777; margin: 0 0 5px 0; font-size: 12px; }
+#controls-info ul { list-style: none; padding: 0; margin: 0; }
