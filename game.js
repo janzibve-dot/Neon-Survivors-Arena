@@ -236,7 +236,7 @@ class RocketPool {
 }
 const rocketPool = new RocketPool(50);
 
-// --- НОВЫЙ КЛАСС: САМОНАВОДЯЩИЕСЯ РАКЕТЫ (SHIFT) ---
+// САМОНАВОДЯЩИЕСЯ РАКЕТЫ (SHIFT)
 class HomingMissilePool {
     constructor(size) {
         this.pool = [];
@@ -247,7 +247,6 @@ class HomingMissilePool {
         for (let m of this.pool) {
             if (!m.active) {
                 m.active = true; m.x = x; m.y = y;
-                // Запускаем в случайную сторону сначала
                 const randomAngle = Math.random() * Math.PI * 2;
                 m.vx = Math.cos(randomAngle) * 5; 
                 m.vy = Math.sin(randomAngle) * 5;
@@ -263,18 +262,14 @@ class HomingMissilePool {
         ctx.shadowBlur = 20; ctx.shadowColor = '#ff00ff';
         for (let m of this.pool) {
             if (m.active) {
-                // Логика самонаведения
                 if (m.target && m.target.hp > 0) {
                     const angleToTarget = Math.atan2(m.target.y - m.y, m.target.x - m.x);
-                    // Плавный поворот
                     let diff = angleToTarget - m.angle;
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
-                    m.angle += diff * 0.1; // Скорость поворота
+                    m.angle += diff * 0.1; 
                     
-                    // Петляние (Wobble)
                     const wobble = Math.sin(m.life * 0.2) * 0.5;
-                    
                     m.vx = Math.cos(m.angle + wobble) * m.speed;
                     m.vy = Math.sin(m.angle + wobble) * m.speed;
                 }
@@ -282,15 +277,12 @@ class HomingMissilePool {
                 m.x += m.vx; m.y += m.vy; m.life--;
                 if (m.life <= 0) { m.active = false; continue; }
 
-                // Рисуем
                 ctx.save();
                 ctx.translate(m.x, m.y);
                 ctx.rotate(m.angle);
-                ctx.fillStyle = '#ff00ff'; // Маджента
+                ctx.fillStyle = '#ff00ff';
                 ctx.fillRect(-10, -5, 20, 10);
                 ctx.restore();
-                
-                // Трейл
                 particlePool.explode(m.x, m.y, '#ff00ff', 1);
             }
         }
@@ -349,7 +341,7 @@ class Player {
     
     activateUlt() {
         this.isFrozen = true;
-        this.ultTimer = 360; // 6 секунд
+        this.ultTimer = 360; 
         document.getElementById('ultOverlay').style.display = 'block';
     }
 
@@ -551,10 +543,16 @@ function spawnBoss() {
     enemies.push(boss);
     ultReady = true;
     document.getElementById('shiftAlert').style.display = 'flex';
-    sound.danger(); // ЗВУК ОПАСНОСТИ
-    player.activateUlt(); // Старый фриз пока уберем, или заменим на новую механику
-    // В новой механике игрока не фризим, просто даем ульту
-    player.isFrozen = false; // Отключаем старый фриз, если был
+    sound.danger(); 
+    // --- ИСПРАВЛЕНИЕ: СКРЫВАЕМ ЧЕРЕЗ 2 СЕКУНДЫ ---
+    setTimeout(() => {
+        document.getElementById('shiftAlert').style.display = 'none';
+    }, 2000);
+    
+    // Старая ульта и фриз отключены для новой механики, но мы их вызываем, чтобы не ломать логику если она где-то используется
+    // (В текущей версии фриз отключен в activateUlt внутри player, но метод есть)
+    player.activateUlt(); 
+    player.isFrozen = false; 
     document.getElementById('ultOverlay').style.display = 'none';
 }
 
@@ -562,16 +560,14 @@ function activateHomingStrike() {
     ultReady = false;
     document.getElementById('shiftAlert').style.display = 'none';
     
-    // Ищем босса
     const boss = enemies.find(e => e.isBoss);
     const target = boss || (enemies.length > 0 ? enemies[0] : null);
     
     if (target) {
-        const damage = target.maxHp * 0.4; // 40% от макс здоровья
-        // Запускаем 5 ракет
+        const damage = target.maxHp * 0.4; 
         for(let i=0; i<5; i++) {
             setTimeout(() => {
-                homingPool.get(player.x, player.y, target, damage / 5); // Делим урон на 5 ракет
+                homingPool.get(player.x, player.y, target, damage / 5); 
             }, i * 100);
         }
     }
@@ -590,20 +586,19 @@ function startGame() {
     
     gameStage = 1;
     difficultyMultiplier = 1.0;
-    timeUntilBoss = 60; // Старт с 60 сек
+    timeUntilBoss = 60; 
     
     bulletPool.pool.forEach(b => b.active = false);
     rocketPool.pool.forEach(r => r.active = false);
     homingPool.pool.forEach(m => m.active = false);
     enemyBulletPool.pool.forEach(b => b.active = false);
     particlePool.pool.forEach(p => p.active = false);
-    scoreTime = 0; killScore = 0; spawnInterval = 100; // Чуть медленнее спавн для начала
+    scoreTime = 0; killScore = 0; spawnInterval = 100; 
     frameCount = 0;
     currentState = STATE.PLAYING; updateUI(); animate();
 }
 
 function launchFireworks() {
-    // Салют в разных точках
     for(let i=0; i<5; i++) {
         setTimeout(() => {
             const x = Math.random() * canvas.width;
@@ -789,10 +784,20 @@ function animate() {
                     floatText.show(enemy.x, enemy.y - 30, "+EXP", "#ffea00");
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
-                        gameStage++; difficultyMultiplier *= 1.05; 
+                        
+                        gameStage++;
+                        difficultyMultiplier *= 1.05; 
+                        let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
+                        timeUntilBoss = nextBossTime;
+
+                        launchFireworks(); 
                         sound.bossDeath();
                         particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
-                        floatText.show(canvas.width/2, canvas.height/2, "STAGE CLEARED!", "#ff2a2a");
+                        
+                        document.getElementById('announcementStage').innerText = gameStage;
+                        document.getElementById('stageAnnouncement').style.display = 'flex';
+                        setTimeout(() => document.getElementById('stageAnnouncement').style.display = 'none', 3000);
+
                         updateUI();
                     }
                 }
