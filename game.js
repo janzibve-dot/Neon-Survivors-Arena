@@ -32,7 +32,6 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// Блокируем контекстное меню для ПКМ
 window.addEventListener('contextmenu', event => event.preventDefault());
 
 window.addEventListener('keydown', e => {
@@ -40,11 +39,9 @@ window.addEventListener('keydown', e => {
     if ((e.code === 'Escape' || e.code === 'KeyP') && (currentState === STATE.PLAYING || currentState === STATE.PAUSE)) {
         togglePause();
     }
-    // Чит
     if (e.code === 'KeyB' && currentState === STATE.PLAYING && !bossActive) {
         timeUntilBoss = 0;
     }
-    // ПРОБЕЛ - ЩИТ
     if (e.code === 'Space' && currentState === STATE.PLAYING) {
         player.activateShield();
     }
@@ -94,18 +91,27 @@ class SoundManager {
         setTimeout(() => this.playTone(554, 'sine', 0.3, 0.1), 100);
         setTimeout(() => this.playTone(659, 'sine', 0.5, 0.1), 200);
     }
+    danger() { 
+        this.playTone(800, 'square', 0.1, 0.2);
+        setTimeout(() => this.playTone(800, 'square', 0.1, 0.2), 150);
+        setTimeout(() => this.playTone(800, 'square', 0.1, 0.2), 300);
+    }
+    hackSuccess() {
+        this.playTone(200, 'square', 0.1, 0.2);
+        setTimeout(() => this.playTone(400, 'square', 0.1, 0.2), 100);
+        setTimeout(() => this.playTone(800, 'square', 0.3, 0.2), 200);
+    }
 }
 const sound = new SoundManager();
 
-// --- 3. ФОН (ЗВЕЗДНОЕ НЕБО С КОМЕТАМИ) ---
+// --- 3. ФОН ---
 class Background {
     constructor() {
         this.stars = [];
         this.comets = [];
-        // Создаем звезды для спирали
         for(let i=0; i<300; i++) {
             this.stars.push({
-                dist: Math.random() * canvas.width, // Расстояние от центра
+                dist: Math.random() * canvas.width, 
                 angle: Math.random() * Math.PI * 2,
                 size: Math.random() * 2,
                 color: Math.random() > 0.8 ? '#00f3ff' : '#ffffff'
@@ -113,52 +119,35 @@ class Background {
         }
     }
     update() {
-        // Вращение звезд
         this.stars.forEach(s => {
-            s.angle += 0.0005; // Медленное вращение
-            s.dist -= 0.1; // Легкое притяжение к центру
+            s.angle += 0.0005; 
+            s.dist -= 0.1; 
             if(s.dist < 0) s.dist = canvas.width;
         });
-
-        // Кометы
-        if (Math.random() < 0.01) { // Шанс появления кометы
+        if (Math.random() < 0.01) { 
             this.comets.push({
-                x: Math.random() * canvas.width, 
-                y: -10, 
-                vx: (Math.random() - 0.5) * 2, 
-                vy: Math.random() * 5 + 2,
-                life: 100
+                x: Math.random() * canvas.width, y: -10, 
+                vx: (Math.random() - 0.5) * 2, vy: Math.random() * 5 + 2, life: 100
             });
         }
         for(let i = this.comets.length -1; i>=0; i--) {
-            let c = this.comets[i];
-            c.x += c.vx; c.y += c.vy; c.life--;
+            let c = this.comets[i]; c.x += c.vx; c.y += c.vy; c.life--;
             if (c.life <= 0) this.comets.splice(i, 1);
         }
     }
     draw() {
-        // Центр экрана
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-
-        // Рисуем звезды
+        const cx = canvas.width / 2; const cy = canvas.height / 2;
         this.stars.forEach(s => {
             const x = cx + Math.cos(s.angle) * s.dist;
             const y = cy + Math.sin(s.angle) * s.dist;
-            
-            // Только если на экране
             if (x > 0 && x < canvas.width && y > 0 && y < canvas.height) {
                 ctx.fillStyle = s.color; ctx.globalAlpha = Math.random() * 0.5 + 0.3;
                 ctx.fillRect(x, y, s.size, s.size);
             }
         });
-
-        // Рисуем кометы
         ctx.globalAlpha = 0.8;
         this.comets.forEach(c => {
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.arc(c.x, c.y, 2, 0, Math.PI*2); ctx.fill();
-            // Хвост
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(c.x, c.y, 2, 0, Math.PI*2); ctx.fill();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - c.vx*10, c.y - c.vy*10); ctx.stroke();
         });
@@ -213,13 +202,109 @@ class ParticlePool {
 }
 const particlePool = new ParticlePool(1000);
 
-// --- 4. ЛУТ (SUPPLY BOX) ---
+// --- 4. ЗОНА ВЗЛОМА (НОВОЕ) ---
+class HackingZone {
+    constructor() {
+        this.active = false;
+        this.x = 0; this.y = 0;
+        this.radius = 80;
+        this.timer = 3.0; // 3 секунды
+    }
+    spawn() {
+        this.x = Math.random() * (canvas.width - 200) + 100;
+        this.y = Math.random() * (canvas.height - 200) + 100;
+        this.timer = 3.0;
+        this.active = true;
+        floatText.show(this.x, this.y, "HACK ZONE DETECTED", "#39ff14");
+    }
+    update(player) {
+        if (!this.active) return;
+        const dist = Math.hypot(this.x - player.x, this.y - player.y);
+        
+        if (dist < this.radius) {
+            // Игрок внутри
+            this.timer -= 1/60;
+            if (this.timer <= 0) {
+                this.timer = 0;
+                this.completeHack();
+            }
+        } else {
+            // Игрок вышел - сброс
+            this.timer = 3.0;
+        }
+    }
+    draw() {
+        if (!this.active) return;
+        
+        const isInside = this.timer < 3.0;
+        const color = isInside ? '#39ff14' : '#00f3ff';
+        
+        // Круг зоны
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        // Вращающееся кольцо
+        ctx.beginPath();
+        ctx.setLineDash([10, 10]);
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Заливка таймера (сектор)
+        if (isInside) {
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            // Рисуем сектор от 0 до процента выполнения
+            const percent = 1 - (this.timer / 3.0);
+            ctx.arc(0, 0, this.radius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * percent));
+            ctx.fillStyle = 'rgba(57, 255, 20, 0.3)';
+            ctx.fill();
+        }
+        
+        // Текст таймера над зоной
+        ctx.fillStyle = '#fff';
+        ctx.font = "bold 20px 'Share Tech Mono'";
+        ctx.textAlign = "center";
+        ctx.fillText(this.timer.toFixed(2), 0, -this.radius - 10);
+        ctx.fillText(isInside ? "UPLOADING..." : "ENTER ZONE", 0, this.radius + 20);
+        
+        ctx.restore();
+    }
+    
+    completeHack() {
+        this.active = false;
+        sound.hackSuccess();
+        
+        // Эффект взлома
+        document.getElementById('hackMessage').style.display = 'flex';
+        setTimeout(() => document.getElementById('hackMessage').style.display = 'none', 3000);
+        
+        // Убиваем всех обычных врагов
+        let killCount = 0;
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            if (!enemies[i].isBoss) {
+                particlePool.explode(enemies[i].x, enemies[i].y, enemies[i].color, 10);
+                enemies.splice(i, 1);
+                killScore++;
+                killCount++;
+            }
+        }
+        player.gainXp(killCount * 10);
+        
+        // Даем лут
+        spawnLoot(this.x, this.y);
+        spawnLoot(this.x + 30, this.y);
+    }
+}
+const hackingZone = new HackingZone();
+
 class SupplyBox {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.size = 25;
         this.active = true;
         this.angle = 0;
-        this.type = type; // 'MISSILE' or 'SHIELD'
+        this.type = type; 
     }
     update() { this.angle += 0.05; }
     draw() {
@@ -229,17 +314,14 @@ class SupplyBox {
         ctx.rotate(this.angle);
         
         if (this.type === 'MISSILE') {
-            ctx.fillStyle = 'rgba(255, 0, 255, 0.3)';
-            ctx.strokeStyle = '#ff00ff';
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.3)'; ctx.strokeStyle = '#ff00ff';
         } else {
-            ctx.fillStyle = 'rgba(0, 243, 255, 0.3)';
-            ctx.strokeStyle = '#00f3ff';
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.3)'; ctx.strokeStyle = '#00f3ff';
         }
         
         ctx.lineWidth = 2;
         ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
         ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
-        
         ctx.fillStyle = '#fff'; ctx.font = "16px Arial"; ctx.textAlign = "center";
         ctx.fillText(this.type === 'MISSILE' ? "🚀" : "🛡️", 0, 6);
         ctx.restore();
@@ -650,6 +732,14 @@ function spawnLoot(x, y) {
     if (type) lootPool.push(new SupplyBox(x, y, type));
 }
 
+function spawnHackingZone() {
+    if (!hackingZone.active) {
+        if (Math.random() < 0.01) { // 1% шанс каждый кадр если зоны нет
+            hackingZone.spawn();
+        }
+    }
+}
+
 function startGame() {
     sound.init();
     if (sound.ctx.state === 'suspended') sound.ctx.resume(); // ПРИНУДИТЕЛЬНЫЙ ЗАПУСК ЗВУКА
@@ -659,9 +749,11 @@ function startGame() {
     document.getElementById('dashboard').style.display = 'flex'; 
     document.getElementById('gameOverScreen').style.display = 'none';
     document.getElementById('stageAnnouncement').style.display = 'none';
+    document.getElementById('hackMessage').style.display = 'none';
     
     player.reset(); enemies = []; lootPool = []; bossActive = false; 
     document.getElementById('bossContainer').style.display = 'none';
+    hackingZone.active = false;
     
     gameStage = 1;
     difficultyMultiplier = 1.0;
@@ -766,6 +858,9 @@ function animate() {
         timeUntilBoss -= 1/60; 
         if (timeUntilBoss <= 0) { timeUntilBoss = 0; spawnBoss(); }
         document.getElementById('bossTimer').innerText = Math.ceil(timeUntilBoss);
+        
+        // Спавн зон взлома (только если нет босса)
+        spawnHackingZone();
     } else {
         document.getElementById('bossTimer').innerText = "!!!";
     }
@@ -784,6 +879,10 @@ function animate() {
     }
 
     if (player.invincibleTimer > 0) updateUI();
+
+    // Обновляем Зону Взлома
+    hackingZone.update(player);
+    hackingZone.draw();
 
     particlePool.updateAndDraw();
     floatText.updateAndDraw();
@@ -822,6 +921,7 @@ function animate() {
             if (!enemy.isBoss) enemies.splice(i, 1); continue;
         }
 
+        // ПУЛИ
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
@@ -854,6 +954,7 @@ function animate() {
             }
         }
 
+        // РАКЕТЫ
         for (let r of rocketPool.pool) {
             if (!r.active) continue;
             const dist = Math.hypot(r.x - enemy.x, r.y - enemy.y);
@@ -882,6 +983,7 @@ function animate() {
             }
         }
 
+        // РАКЕТЫ ПКМ (HOMING)
         for (let m of homingPool.pool) {
             if (!m.active) continue;
             const dist = Math.hypot(m.x - enemy.x, m.y - enemy.y);
