@@ -16,7 +16,7 @@
 
     <div id="startScreen" class="screen cyber-panel">
         <h1 class="cyber-glitch" data-text="CYBERPUNK SURVIVOR">CYBERPUNK SURVIVOR</h1>
-        <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | CLICK - ОГОНЬ | 1 - АПТЕЧКА</p>
+        <p class="cyber-subtext">WASD - ДВИЖЕНИЕ | ЛКМ - ОГОНЬ | ПКМ - РАКЕТЫ | 1 - ЛЕЧЕНИЕ</p>
         <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
     </div>
 
@@ -26,6 +26,40 @@
     </div>
 
     <div id="ui">
+        
+        <div id="top-dashboard">
+            <div class="dash-group">
+                <span class="label">LVL</span>
+                <span id="levelValue" class="val-text">1</span>
+                <div class="xp-bar-mini"><div id="xpBar" class="fill"></div></div>
+            </div>
+
+            <div class="dash-group">
+                <span class="label">TIME</span>
+                <span id="timer" class="val-text highlight">0</span>
+            </div>
+
+            <div class="dash-group loot-display">
+                <div class="res-slot" style="color: #ff2a2a;">
+                    <span class="icon">✚</span> <span id="medkitVal">0</span>
+                    <span class="key-hint">[1]</span>
+                </div>
+                <div class="res-slot" style="color: #ffea00;">
+                    <span class="icon">★</span> <span id="starVal">0</span>
+                </div>
+                <div class="res-slot" style="color: #ffaa00;">
+                    <span class="icon">▲</span> <span id="missileVal">0</span>
+                    <span class="key-hint">[RMB]</span>
+                </div>
+            </div>
+
+            <div class="dash-group hp-group">
+                <span class="label">HP</span>
+                <div class="hp-bar-mini"><div id="hpBar" class="fill"></div></div>
+                <span id="hpText" class="hp-num">100/100</span>
+            </div>
+        </div>
+
         <div id="bossContainer" style="display: none;">
              <div class="boss-label cyber-text-small">// УГРОЗА ОМЕГА-КЛАССА //</div>
             <div class="tech-bar-container">
@@ -33,33 +67,6 @@
             </div>
         </div>
 
-        <div class="top-bar">
-            <div class="level-box cyber-text">LVL.<span id="levelValue">1</span></div>
-             <div class="tech-bar-container xp-container">
-                <div class="tech-bar-fill xp-fill" id="xpBar"></div>
-            </div>
-        </div>
-
-        <div class="stats tech-panel-small resource-panel">
-            <div class="res-item"><span class="icon">💊</span> <span id="medkitVal">0</span> (ЖМИ 1)</div>
-            <div class="res-item"><span class="icon">⭐</span> <span id="starVal">0</span></div>
-        </div>
-
-        <div class="hp-wrapper tech-panel-small">
-            <div class="bar-text cyber-text-small">HP СТАТУС: <span id="hpText">100/100</span></div>
-            <div class="tech-bar-container">
-                <div class="tech-bar-fill hp-fill" id="hpBar"></div>
-            </div>
-        </div>
-
-        <div class="stats tech-panel-small">
-            <div>ДАННЫЕ: <span id="scoreValue" class="cyber-highlight">0</span></div>
-            <div>ВРЕМЯ: <span id="timer" class="cyber-highlight">0</span></div>
-        </div>
-        
-        <div class="controls-hint cyber-text-small">
-            [WASD] MOVE [MOUSE] AIM [LMB] SHOOT [1] HEAL
-        </div>
     </div>
 
     <div id="levelUpScreen" class="screen cyber-panel" style="display: none;">
@@ -69,8 +76,7 @@
 
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
         <h1 class="cyber-glitch alert-text" data-text="КРИТИЧЕСКИЙ СБОЙ">КРИТИЧЕСКИЙ СБОЙ</h1>
-        <p class="cyber-subtext">ВРЕМЯ В СЕТИ: <span id="finalTime" class="cyber-highlight">0</span> СЕК</p>
-        <p class="cyber-subtext">УСТРАНЕНО УГРОЗ: <span id="finalScore" class="cyber-highlight">0</span></p>
+        <p class="cyber-subtext">СЧЕТ: <span id="finalScore" class="cyber-highlight">0</span></p>
         <button onclick="location.reload()" class="cyber-button">ПЕРЕЗАГРУЗКА СИСТЕМЫ</button>
     </div>
 
