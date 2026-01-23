@@ -18,8 +18,7 @@
                 <div class="dash-label">LVL</div>
                 <div id="levelValue" class="dash-value cyber-yellow">1</div>
             </div>
-            <div class="dash-item" style="width: 120px;">
-                <div class="dash-label">HP STATUS</div>
+            <div class="dash-item" style="width: 140px;"> <div class="dash-label">HP STATUS</div>
                 <div class="mini-bar-container">
                     <div id="hpBar" class="mini-bar-fill hp-fill"></div>
                 </div>
@@ -30,7 +29,7 @@
         <div class="dash-section">
             <div class="dash-item">
                 <div class="dash-label">BOSS TIMER</div>
-                <div id="bossTimer" class="dash-value cyber-alert" style="font-size: 1.5em;">60</div>
+                <div id="bossTimer" class="dash-value cyber-alert" style="font-size: 1.8em;">60</div>
             </div>
             <div class="dash-item">
                 <div class="dash-label">SCORE</div>
@@ -60,20 +59,27 @@
 
     <div id="stageAnnouncement" style="display: none;">
         <div class="stage-box">
-            <h1 class="cyber-glitch" style="font-size: 4em; color: var(--cyber-cyan);">УРОВЕНЬ <span id="announcementStage">2</span></h1>
+            <h1 class="cyber-glitch" style="font-size: 5em; color: var(--cyber-cyan);">УРОВЕНЬ <span id="announcementStage">2</span></h1>
             <p class="cyber-text-small" style="color: var(--cyber-yellow);">СЛОЖНОСТЬ ПОВЫШЕНА (+5%)</p>
         </div>
     </div>
 
     <div id="startScreen" class="screen cyber-panel">
-        <h1 class="cyber-glitch" data-text="Neon-Survivors-Arena">Neon-Survivors-Arena</h1>
+        
+        <div class="retro-sign">
+            <span class="neon-flicker-slow">R</span>ETR<span class="neon-flicker-fast">O</span>
+            <span class="neon-broken">G</span>AMES
+        </div>
+
+        <h1 class="cyber-glitch" data-text="Neon-Survivors-Arena" style="margin-top: 0;">Neon-Survivors-Arena</h1>
+        
         <div class="controls-info">
             <p><span class="key-hint">WASD</span> Движение</p>
             <p><span class="key-hint">ЛКМ</span> Огонь (Авто)</p>
             <p><span class="key-hint">ПКМ</span> Самонаводящаяся Ракета</p>
             <p><span class="key-hint">SPACE</span> Использовать Щит (5 сек)</p>
         </div>
-        <p class="cyber-text-small" style="color: var(--cyber-yellow); margin-top:20px;">РЕКОРД: <span id="menuHighScore">0</span></p>
+        <p class="cyber-text-small" style="color: var(--cyber-yellow); margin-top:20px; font-size: 1.2em;">РЕКОРД: <span id="menuHighScore">0</span></p>
         <button id="startBtn" class="cyber-button">ИНИЦИАЛИЗАЦИЯ >></button>
     </div>
 
