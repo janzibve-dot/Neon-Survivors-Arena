@@ -6,13 +6,12 @@
     --cyber-dark: #050505;
     --cyber-panel: #0a0a12;
     --cyber-alert: #ff2a2a;
+    --cyber-green: #39ff14;
     --font-header: 'Orbitron', sans-serif;
     --font-tech: 'Share Tech Mono', monospace;
 }
 
 body { margin: 0; overflow: hidden; background-color: var(--cyber-dark); font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none; }
-
-/* КАНВАС ДОЛЖЕН БЫТЬ ПОЗАДИ ВСЕГО, НО ВИДЕН */
 canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-index: 1; }
 
 /* --- DASHBOARD --- */
@@ -34,12 +33,10 @@ canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-in
 .cyber-yellow { color: var(--cyber-yellow); }
 .cyber-alert { color: var(--cyber-alert); }
 
-/* Мини бары */
 .mini-bar-container { width: 100%; height: 8px; background: #222; border: 1px solid #555; position: relative; skewX(-20deg); }
 .mini-bar-fill { height: 100%; transition: width 0.2s; }
 .hp-fill { background: linear-gradient(90deg, var(--cyber-magenta), red); box-shadow: 0 0 5px red; }
 
-/* ИНВЕНТАРЬ */
 .inventory-slot {
     width: 60px; height: 50px;
     border: 1px solid var(--cyber-cyan);
@@ -54,6 +51,24 @@ canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-in
 #shieldActiveBar {
     position: absolute; bottom: 0; left: 0; height: 100%; width: 0%;
     background: rgba(0, 243, 255, 0.3); pointer-events: none; transition: width 0.1s linear;
+}
+
+/* --- СООБЩЕНИЕ О ВЗЛОМЕ (НОВОЕ) --- */
+#hackMessage {
+    position: absolute; top: 120px; left: 0; width: 100%; /* Под верхним блоком */
+    text-align: center; pointer-events: none; z-index: 150;
+    display: flex; flex-direction: column; align-items: center;
+}
+.glitch-hack {
+    font-family: var(--font-header); font-size: 4em; font-weight: 900;
+    color: var(--cyber-green);
+    text-shadow: 3px 3px 0px #000, -3px -3px 0px var(--cyber-cyan);
+    margin: 0;
+    animation: rapidBlink 0.1s infinite;
+}
+.hack-sub {
+    font-size: 1.5em; color: white; background: rgba(0,0,0,0.7);
+    padding: 5px 20px; border: 1px solid var(--cyber-green); margin-top: 10px;
 }
 
 /* --- ЭФФЕКТЫ --- */
@@ -92,7 +107,6 @@ canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-in
 .tech-bar-fill { height: 100%; transition: width 0.2s ease-out; position: relative; }
 .boss-fill { background: var(--cyber-alert); box-shadow: 0 0 20px var(--cyber-alert); }
 
-/* --- ЭКРАНЫ --- */
 .screen {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 110;
@@ -108,6 +122,7 @@ canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-in
     animation: glitchSkew 2s infinite linear alternate-reverse;
 }
 @keyframes glitchSkew { 0% { transform: skew(0deg); } 20% { transform: skew(0deg); } 21% { transform: skew(2deg); } 22% { transform: skew(-2deg); } 23% { transform: skew(0deg); } 100% { transform: skew(0deg); } }
+@keyframes rapidBlink { from { opacity: 1; } to { opacity: 0.5; } }
 
 .controls-info { text-align: left; margin: 20px 0; color: #fff; font-size: 1.1em; line-height: 1.6; border: 1px solid #333; padding: 20px; background: rgba(0,0,0,0.5); }
 .key-hint { color: var(--cyber-yellow); font-weight: bold; margin-right: 10px; }
