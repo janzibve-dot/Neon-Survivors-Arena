@@ -1,169 +1,157 @@
+/* --- CYBERPUNK THEME VARIABLES --- */
+:root {
+    --cyber-cyan: #00f3ff;
+    --cyber-magenta: #ff00ff;
+    --cyber-yellow: #ffea00;
+    --cyber-dark: #0a0a12;
+    --cyber-alert: #ff2a2a;
+    --font-header: 'Orbitron', sans-serif;
+    --font-tech: 'Share Tech Mono', monospace;
+}
+
+/* --- ОСНОВНОЕ --- */
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #050505;
-    font-family: 'Courier New', Courier, monospace; /* Моноширинный шрифт для ретро стиля */
-    color: white;
+    background-color: #020205; /* Почти черный */
+    font-family: var(--font-tech);
+    color: var(--cyber-cyan);
+    user-select: none;
 }
 
-#game-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-}
+canvas { display: block; cursor: none; }
 
-canvas {
-    display: block;
-}
-
-/* === ФОНОВАЯ ВЫВЕСКА === */
+/* ФОНОВАЯ ВЫВЕСКА RETRO GAMES */
 #retro-bg {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 12vw;
-    font-weight: 900;
-    color: rgba(20, 20, 20, 0.5);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    text-shadow: 0 0 10px rgba(255, 0, 255, 0.1);
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-family: var(--font-header);
+    font-size: 10vw; font-weight: 900;
+    color: rgba(255, 255, 255, 0.05);
+    z-index: 1; pointer-events: none; white-space: nowrap;
+    text-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
     animation: flicker 4s infinite;
-    font-family: sans-serif; /* Для вывески можно оставить жирный санс */
 }
 
 @keyframes flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-        opacity: 0.1;
-        text-shadow: none;
-    }
-    20%, 24%, 55% {
-        opacity: 0.3;
-        text-shadow: 0 0 20px #ff00ff;
-        color: rgba(50, 0, 50, 0.5);
-    }
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 0.1; text-shadow: none; }
+    20%, 24%, 55% { opacity: 0.3; text-shadow: 0 0 30px var(--cyber-magenta); color: rgba(255, 0, 255, 0.1); }
 }
 
-/* === HUD (Верхняя панель) === */
-#ui-dashboard {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 50px;
-    background: rgba(0, 0, 0, 0.8);
-    border-bottom: 1px solid #00ffcc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 25px;
-    z-index: 20;
-    font-size: 14px;
-    font-weight: bold;
-    color: #00ffcc;
-    letter-spacing: 1px;
+/* Эффект Сканлайнов (CRT монитор) */
+.scanlines {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 3px 100%;
+    pointer-events: none; z-index: 100; opacity: 0.6;
 }
 
-.stat-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+#damageOverlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, rgba(255, 0, 0, 0.1) 0px, rgba(255, 0, 0, 0.1) 2px, transparent 2px, transparent 4px);
+    box-shadow: inset 0 0 100px var(--cyber-alert);
+    opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; mix-blend-mode: overlay;
 }
 
-.label {
-    color: #888;
+/* --- ТИПОГРАФИКА И ЭФФЕКТЫ --- */
+.cyber-text { font-family: var(--font-header); letter-spacing: 2px; text-transform: uppercase; }
+.cyber-text-small { font-size: 14px; letter-spacing: 1px; opacity: 0.8; }
+.cyber-subtext { font-size: 18px; margin-bottom: 40px; color: rgba(0, 243, 255, 0.7); }
+.cyber-highlight { color: var(--cyber-yellow); font-weight: bold; }
+.alert-text { color: var(--cyber-alert) !important; text-shadow: 2px 2px 0px #000, -2px -2px 0px var(--cyber-yellow) !important; }
+
+/* Глитч-эффект заголовка */
+.cyber-glitch {
+    font-family: var(--font-header); font-size: 4em; font-weight: 900;
+    position: relative; color: var(--cyber-cyan);
+    text-shadow: 3px 3px 0px var(--cyber-magenta), -3px -3px 0px var(--cyber-yellow);
+    animation: glitchSkew 1s infinite linear alternate-reverse;
+}
+@keyframes glitchSkew {
+    0% { transform: skew(0deg); } 20% { transform: skew(0deg); }
+    21% { transform: skew(2deg); } 22% { transform: skew(-2deg); }
+    23% { transform: skew(0deg); } 100% { transform: skew(0deg); }
 }
 
-.bar-container {
-    width: 100px;
-    height: 10px;
-    background: #222;
-    border: 1px solid #444;
+/* --- UI ПАНЕЛИ (ПЛАШКИ) --- */
+.cyber-panel {
+    background: rgba(10, 10, 18, 0.95);
+    border: 2px solid var(--cyber-cyan);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.1);
+    background-image: 
+        linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
 }
 
-#hp-bar-fill { height: 100%; width: 100%; background: #ff3333; transition: width 0.1s; }
-#xp-bar-fill { height: 100%; width: 0%; background: #33cc33; transition: width 0.2s; }
-
-#shield-indicator {
-    padding: 2px 6px;
-    border: 1px solid #444;
-    font-size: 12px;
+.tech-panel-small {
+    background: rgba(0,0,0,0.7);
+    border-left: 4px solid var(--cyber-cyan);
+    padding: 10px 15px;
+    margin-top: 10px;
+    clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
 }
-.shield-on { background: #00ccff; color: #000; box-shadow: 0 0 5px #00ccff; border-color: #00ccff !important; }
-.shield-off { background: #111; color: #555; }
+.hp-wrapper { width: 320px; position: relative; }
+.resource-panel { display: flex; gap: 20px; color: #fff; }
+.res-item { display: flex; align-items: center; gap: 5px; font-weight: bold; }
+.controls-hint { position: fixed; bottom: 20px; left: 20px; opacity: 0.5; }
 
-/* === БОСС БАР === */
-#boss-container {
-    position: absolute;
-    top: 60px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 500px;
-    z-index: 15;
-    text-align: center;
+/* --- БАРЫ ЗДОРОВЬЯ И ОПЫТА (TECH BARS) --- */
+.tech-bar-container {
+    height: 18px; background: #111; border: 1px solid #333;
+    position: relative; overflow: hidden; flex-grow: 1;
+    box-shadow: inset 0 0 5px #000;
 }
-
-.boss-label {
-    color: #ff0055;
-    font-weight: bold;
-    font-size: 16px;
-    margin-bottom: 2px;
-    text-shadow: 0 0 5px #ff0055;
-    letter-spacing: 2px;
+.tech-bar-fill { height: 100%; transition: width 0.2s ease-out; position: relative; }
+.tech-bar-fill::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.5) 4px, rgba(0,0,0,0.5) 6px);
+    z-index: 2; opacity: 0.5;
 }
 
-.boss-bar-bg {
-    width: 100%;
-    height: 15px;
-    background: #220000;
-    border: 2px solid #ff0055;
+.xp-container { height: 12px; }
+.xp-fill { background: linear-gradient(90deg, var(--cyber-cyan), var(--cyber-yellow)); box-shadow: 0 0 15px var(--cyber-cyan); }
+.hp-fill { background: linear-gradient(90deg, var(--cyber-magenta), var(--cyber-alert)); box-shadow: 0 0 15px var(--cyber-magenta); }
+.boss-fill { background: var(--cyber-alert); box-shadow: 0 0 20px var(--cyber-alert); }
+
+#bossContainer { text-align: center; margin-bottom: 20px; width: 600px; margin: 0 auto 20px;}
+.boss-label { animation: flashText 1s infinite alternate; }
+@keyframes flashText { from { opacity: 0.6; color: var(--cyber-alert); } to { opacity: 1; color: white; } }
+
+/* --- ИНТЕРФЕЙС --- */
+#ui { position: absolute; top: 20px; left: 20px; right: 20px; pointer-events: none; display: none; z-index: 20; }
+.top-bar { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
+.level-box { font-size: 24px; font-weight: 900; text-shadow: 0 0 5px var(--cyber-cyan); }
+.bar-text { margin-bottom: 5px; display: block;}
+
+/* --- ЭКРАНЫ И КНОПКИ --- */
+.screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30;
 }
 
-#boss-hp-fill {
-    width: 100%;
-    height: 100%;
-    background: #ff0055;
-    box-shadow: 0 0 10px #ff0055;
-    transition: width 0.1s;
+.cyber-button {
+    margin-top: 40px; padding: 15px 40px; font-family: var(--font-header); font-size: 20px;
+    color: var(--cyber-dark); background: var(--cyber-cyan); border: none;
+    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+    cursor: pointer; transition: 0.2s; font-weight: 900; letter-spacing: 2px;
 }
+.cyber-button:hover { background: var(--cyber-yellow); transform: scale(1.05) skewX(-5deg); box-shadow: 5px 5px 0px var(--cyber-magenta); }
 
-#boss-hp-text {
-    font-size: 12px;
-    color: #fff;
-    text-shadow: 1px 1px 0 #000;
-}
-
-/* === ЭКРАНЫ === */
-.hidden { display: none !important; }
-
-#level-up-screen, #game-over-screen {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: #000; border: 2px solid #00ffcc;
-    padding: 30px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
-    z-index: 50;
-}
-
-h2, h1 { color: #00ffcc; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 2px; }
-
+/* Карточки апгрейдов */
+#upgradeContainer { display: flex; gap: 25px; margin-top: 40px; }
 .upgrade-card {
-    background: #111; border: 1px solid #333; margin: 10px 0; padding: 10px;
-    cursor: pointer; color: #eee; text-align: left;
+    background: rgba(0, 243, 255, 0.05); border: 2px solid var(--cyber-cyan);
+    padding: 25px; width: 220px; cursor: pointer; text-align: center; transition: 0.3s;
+    clip-path: polygon(5% 0, 100% 0, 100% 95%, 95% 100%, 0 100%, 0 5%);
+    position: relative; overflow: hidden;
 }
-.upgrade-card:hover { border-color: #00ffcc; background: #1a1a1a; }
-.upgrade-card h3 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; }
-.upgrade-card p { margin: 0; font-size: 12px; color: #aaa; }
-
-button {
-    background: transparent; border: 2px solid #00ffcc; color: #00ffcc;
-    padding: 10px 20px; font-family: inherit; font-size: 18px; cursor: pointer;
-    text-transform: uppercase; font-weight: bold;
+.upgrade-card::before {
+    content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.4), transparent);
+    transition: 0.5s;
 }
-button:hover { background: #00ffcc; color: #000; }
-
-#controls-info {
-    position: absolute; bottom: 10px; left: 10px;
-    color: #555; font-size: 12px; pointer-events: none;
-}
-#controls-info h3 { color: #777; margin: 0 0 5px 0; font-size: 12px; }
-#controls-info ul { list-style: none; padding: 0; margin: 0; }
+.upgrade-card:hover::before { left: 100%; }
+.upgrade-card:hover { background: rgba(0, 243, 255, 0.15); border-color: var(--cyber-yellow); box-shadow: 0 0 25px rgba(0, 243, 255, 0.3); transform: translateY(-5px); }
+.upgrade-title { font-family: var(--font-header); font-size: 1.2em; margin-bottom: 15px; color: var(--cyber-yellow); }
+.upgrade-desc { font-size: 0.9em; opacity: 0.8; line-height: 1.4; }
