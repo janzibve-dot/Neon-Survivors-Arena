@@ -3,155 +3,101 @@
     --cyber-cyan: #00f3ff;
     --cyber-magenta: #ff00ff;
     --cyber-yellow: #ffea00;
+    --cyber-orange: #ffaa00;
     --cyber-dark: #0a0a12;
     --cyber-alert: #ff2a2a;
     --font-header: 'Orbitron', sans-serif;
     --font-tech: 'Share Tech Mono', monospace;
 }
 
-/* --- ОСНОВНОЕ --- */
 body {
-    margin: 0;
-    overflow: hidden;
-    background-color: #020205; /* Почти черный */
-    font-family: var(--font-tech);
-    color: var(--cyber-cyan);
-    user-select: none;
+    margin: 0; overflow: hidden; background-color: #020205;
+    font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none;
 }
+canvas { display: block; cursor: crosshair; }
 
-canvas { display: block; cursor: none; }
-
-/* ФОНОВАЯ ВЫВЕСКА RETRO GAMES */
+/* ФОН */
 #retro-bg {
-    position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-family: var(--font-header);
-    font-size: 10vw; font-weight: 900;
-    color: rgba(255, 255, 255, 0.05);
-    z-index: 1; pointer-events: none; white-space: nowrap;
-    text-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-family: var(--font-header); font-size: 10vw; font-weight: 900;
+    color: rgba(255, 255, 255, 0.03); z-index: 1; pointer-events: none; white-space: nowrap;
     animation: flicker 4s infinite;
 }
-
 @keyframes flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 0.1; text-shadow: none; }
-    20%, 24%, 55% { opacity: 0.3; text-shadow: 0 0 30px var(--cyber-magenta); color: rgba(255, 0, 255, 0.1); }
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 0.05; text-shadow: none; }
+    20%, 24%, 55% { opacity: 0.2; text-shadow: 0 0 30px var(--cyber-magenta); color: rgba(255, 0, 255, 0.1); }
 }
 
-/* Эффект Сканлайнов (CRT монитор) */
+/* СКАНЛАЙНЫ */
 .scanlines {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 4px, 3px 100%;
-    pointer-events: none; z-index: 100; opacity: 0.6;
+    background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; opacity: 0.6;
 }
-
 #damageOverlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: repeating-linear-gradient(0deg, rgba(255, 0, 0, 0.1) 0px, rgba(255, 0, 0, 0.1) 2px, transparent 2px, transparent 4px);
-    box-shadow: inset 0 0 100px var(--cyber-alert);
-    opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; mix-blend-mode: overlay;
+    box-shadow: inset 0 0 100px var(--cyber-alert); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
 }
 
-/* --- ТИПОГРАФИКА И ЭФФЕКТЫ --- */
-.cyber-text { font-family: var(--font-header); letter-spacing: 2px; text-transform: uppercase; }
-.cyber-text-small { font-size: 14px; letter-spacing: 1px; opacity: 0.8; }
-.cyber-subtext { font-size: 18px; margin-bottom: 40px; color: rgba(0, 243, 255, 0.7); }
-.cyber-highlight { color: var(--cyber-yellow); font-weight: bold; }
-.alert-text { color: var(--cyber-alert) !important; text-shadow: 2px 2px 0px #000, -2px -2px 0px var(--cyber-yellow) !important; }
+/* --- HUD (ВЕРХНЯЯ ПАНЕЛЬ) --- */
+#ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
 
-/* Глитч-эффект заголовка */
-.cyber-glitch {
-    font-family: var(--font-header); font-size: 4em; font-weight: 900;
-    position: relative; color: var(--cyber-cyan);
-    text-shadow: 3px 3px 0px var(--cyber-magenta), -3px -3px 0px var(--cyber-yellow);
-    animation: glitchSkew 1s infinite linear alternate-reverse;
-}
-@keyframes glitchSkew {
-    0% { transform: skew(0deg); } 20% { transform: skew(0deg); }
-    21% { transform: skew(2deg); } 22% { transform: skew(-2deg); }
-    23% { transform: skew(0deg); } 100% { transform: skew(0deg); }
+#top-dashboard {
+    position: absolute; top: 0; left: 0; width: 100%; height: 60px;
+    background: rgba(10, 10, 18, 0.9); border-bottom: 2px solid var(--cyber-cyan);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 30px; box-sizing: border-box; pointer-events: auto;
 }
 
-/* --- UI ПАНЕЛИ (ПЛАШКИ) --- */
-.cyber-panel {
-    background: rgba(10, 10, 18, 0.95);
-    border: 2px solid var(--cyber-cyan);
-    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.1);
-    background-image: 
-        linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
-    background-size: 20px 20px;
-}
+.dash-group { display: flex; align-items: center; gap: 10px; font-size: 18px; }
+.label { color: #777; font-size: 14px; font-weight: bold; }
+.val-text { font-weight: bold; font-size: 20px; }
+.highlight { color: var(--cyber-yellow); }
 
-.tech-panel-small {
-    background: rgba(0,0,0,0.7);
-    border-left: 4px solid var(--cyber-cyan);
-    padding: 10px 15px;
-    margin-top: 10px;
-    clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
-}
-.hp-wrapper { width: 320px; position: relative; }
-.resource-panel { display: flex; gap: 20px; color: #fff; }
-.res-item { display: flex; align-items: center; gap: 5px; font-weight: bold; }
-.controls-hint { position: fixed; bottom: 20px; left: 20px; opacity: 0.5; }
+/* ЛУТ ДИСПЛЕЙ */
+.loot-display { gap: 25px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 4px; border: 1px solid #333; }
+.res-slot { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 20px; position: relative; }
+.icon { font-size: 22px; }
+.key-hint { font-size: 10px; color: #fff; opacity: 0.5; margin-left: 5px; vertical-align: middle; }
 
-/* --- БАРЫ ЗДОРОВЬЯ И ОПЫТА (TECH BARS) --- */
-.tech-bar-container {
-    height: 18px; background: #111; border: 1px solid #333;
-    position: relative; overflow: hidden; flex-grow: 1;
-    box-shadow: inset 0 0 5px #000;
-}
-.tech-bar-fill { height: 100%; transition: width 0.2s ease-out; position: relative; }
-.tech-bar-fill::after {
-    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.5) 4px, rgba(0,0,0,0.5) 6px);
-    z-index: 2; opacity: 0.5;
-}
+/* БАРЫ */
+.xp-bar-mini { width: 100px; height: 8px; background: #222; border: 1px solid #444; }
+.xp-bar-mini .fill { height: 100%; background: var(--cyber-cyan); width: 0%; transition: width 0.2s; }
 
-.xp-container { height: 12px; }
-.xp-fill { background: linear-gradient(90deg, var(--cyber-cyan), var(--cyber-yellow)); box-shadow: 0 0 15px var(--cyber-cyan); }
-.hp-fill { background: linear-gradient(90deg, var(--cyber-magenta), var(--cyber-alert)); box-shadow: 0 0 15px var(--cyber-magenta); }
-.boss-fill { background: var(--cyber-alert); box-shadow: 0 0 20px var(--cyber-alert); }
+.hp-bar-mini { width: 150px; height: 12px; background: #222; border: 1px solid #444; position: relative; }
+.hp-bar-mini .fill { height: 100%; background: var(--cyber-alert); width: 100%; transition: width 0.2s; }
+.hp-num { font-size: 16px; min-width: 80px; text-align: right; }
 
-#bossContainer { text-align: center; margin-bottom: 20px; width: 600px; margin: 0 auto 20px;}
-.boss-label { animation: flashText 1s infinite alternate; }
-@keyframes flashText { from { opacity: 0.6; color: var(--cyber-alert); } to { opacity: 1; color: white; } }
+/* БОСС БАР */
+#bossContainer { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
+.boss-label { color: var(--cyber-alert); font-weight: bold; animation: flashText 1s infinite; text-shadow: 0 0 10px var(--cyber-alert); }
+.tech-bar-container { height: 20px; background: #110000; border: 2px solid var(--cyber-alert); width: 100%; }
+.boss-fill { height: 100%; background: var(--cyber-alert); box-shadow: 0 0 15px var(--cyber-alert); transition: width 0.1s; }
 
-/* --- ИНТЕРФЕЙС --- */
-#ui { position: absolute; top: 20px; left: 20px; right: 20px; pointer-events: none; display: none; z-index: 20; }
-.top-bar { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
-.level-box { font-size: 24px; font-weight: 900; text-shadow: 0 0 5px var(--cyber-cyan); }
-.bar-text { margin-bottom: 5px; display: block;}
+@keyframes flashText { from { opacity: 0.5; } to { opacity: 1; } }
 
-/* --- ЭКРАНЫ И КНОПКИ --- */
+/* МЕНЮ И КНОПКИ */
 .screen {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(5, 5, 10, 0.95); z-index: 50;
 }
-
+.cyber-panel { border: 2px solid var(--cyber-cyan); box-shadow: 0 0 20px rgba(0,243,255,0.2); }
+.cyber-glitch { font-family: var(--font-header); font-size: 4em; color: var(--cyber-cyan); text-shadow: 3px 3px 0 var(--cyber-magenta); margin-bottom: 10px; }
+.cyber-subtext { font-size: 18px; color: #aaa; margin-bottom: 40px; letter-spacing: 2px; }
 .cyber-button {
-    margin-top: 40px; padding: 15px 40px; font-family: var(--font-header); font-size: 20px;
-    color: var(--cyber-dark); background: var(--cyber-cyan); border: none;
-    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
-    cursor: pointer; transition: 0.2s; font-weight: 900; letter-spacing: 2px;
+    padding: 15px 40px; font-family: var(--font-header); font-size: 20px; font-weight: bold;
+    color: #000; background: var(--cyber-cyan); border: none; cursor: pointer;
+    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); transition: 0.2s;
 }
-.cyber-button:hover { background: var(--cyber-yellow); transform: scale(1.05) skewX(-5deg); box-shadow: 5px 5px 0px var(--cyber-magenta); }
+.cyber-button:hover { background: var(--cyber-yellow); transform: scale(1.05); }
 
-/* Карточки апгрейдов */
-#upgradeContainer { display: flex; gap: 25px; margin-top: 40px; }
 .upgrade-card {
-    background: rgba(0, 243, 255, 0.05); border: 2px solid var(--cyber-cyan);
-    padding: 25px; width: 220px; cursor: pointer; text-align: center; transition: 0.3s;
-    clip-path: polygon(5% 0, 100% 0, 100% 95%, 95% 100%, 0 100%, 0 5%);
-    position: relative; overflow: hidden;
+    background: rgba(0, 255, 255, 0.05); border: 2px solid var(--cyber-cyan); padding: 20px; margin: 10px; width: 200px; cursor: pointer; text-align: center;
 }
-.upgrade-card::before {
-    content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.4), transparent);
-    transition: 0.5s;
-}
-.upgrade-card:hover::before { left: 100%; }
-.upgrade-card:hover { background: rgba(0, 243, 255, 0.15); border-color: var(--cyber-yellow); box-shadow: 0 0 25px rgba(0, 243, 255, 0.3); transform: translateY(-5px); }
-.upgrade-title { font-family: var(--font-header); font-size: 1.2em; margin-bottom: 15px; color: var(--cyber-yellow); }
-.upgrade-desc { font-size: 0.9em; opacity: 0.8; line-height: 1.4; }
+.upgrade-card:hover { background: rgba(0, 255, 255, 0.2); border-color: var(--cyber-yellow); }
+#upgradeContainer { display: flex; flex-wrap: wrap; justify-content: center; }
+
+/* ТИПОГРАФИКА */
+.cyber-text { font-family: var(--font-header); }
+.alert-text { color: var(--cyber-alert); text-shadow: 2px 2px 0 #fff; }
