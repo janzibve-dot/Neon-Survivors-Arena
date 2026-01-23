@@ -11,9 +11,11 @@
 }
 
 body { margin: 0; overflow: hidden; background-color: var(--cyber-dark); font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none; }
-canvas { display: block; cursor: none; }
 
-/* --- DASHBOARD (HUD) --- */
+/* КАНВАС ДОЛЖЕН БЫТЬ ПОЗАДИ ВСЕГО, НО ВИДЕН */
+canvas { display: block; cursor: none; position: absolute; top: 0; left: 0; z-index: 1; }
+
+/* --- DASHBOARD --- */
 #dashboard {
     position: fixed; top: 0; left: 0; width: 100%; height: 70px;
     background: rgba(10, 10, 18, 0.95);
@@ -24,7 +26,6 @@ canvas { display: block; cursor: none; }
 }
 
 .dash-section { display: flex; gap: 25px; align-items: center; height: 100%; }
-
 .dash-item { display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .dash-label { font-size: 10px; color: #888; letter-spacing: 1px; margin-bottom: 2px; }
 .dash-value { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 0 5px currentColor; }
@@ -50,7 +51,6 @@ canvas { display: block; cursor: none; }
 .inv-count { font-size: 18px; font-weight: bold; color: #fff; text-shadow: 0 0 5px #fff; }
 .inv-key { position: absolute; bottom: -12px; font-size: 10px; color: #aaa; background: #000; padding: 0 4px; }
 
-/* Активный щит (визуализация в HUD) */
 #shieldActiveBar {
     position: absolute; bottom: 0; left: 0; height: 100%; width: 0%;
     background: rgba(0, 243, 255, 0.3); pointer-events: none; transition: width 0.1s linear;
