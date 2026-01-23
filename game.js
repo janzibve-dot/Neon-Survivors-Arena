@@ -20,8 +20,6 @@ let scoreTime = 0;
 let killScore = 0;
 let spawnInterval = 90;
 const MAX_ENEMIES = 60;
-
-// Ресурсы
 let medkits = 0;
 let stars = 0;
 
@@ -30,14 +28,50 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// === ИНИЦИАЛИЗАЦИЯ ===
+// --- ЗВУКОВОЙ ДВИЖОК ---
+class SoundManager {
+    constructor() {
+        this.ctx = null;
+    }
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+    playTone(freq, type, dur, vol=0.1) {
+        if(!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+    }
+    shoot() { this.playTone(400, 'square', 0.1, 0.05); }
+    hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
+    pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
+    explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
+}
+const sound = new SoundManager();
+
+// --- ИНИЦИАЛИЗАЦИЯ КНОПОК ---
 window.onload = function() {
-    // Вешаем события на кнопки только когда страница загрузилась
-    document.getElementById('startBtn').onclick = startGame;
+    const startBtn = document.getElementById('startBtn');
+    if(startBtn) {
+        startBtn.onclick = () => {
+            sound.init(); // Включаем звук по клику
+            startGame();
+        };
+    }
     document.getElementById('resumeBtn').onclick = togglePause;
-    
-    // Первый кадр анимации (меню)
-    animate();
+    animate(); // Запускаем цикл отрисовки меню
 };
 
 window.addEventListener('keydown', e => {
@@ -49,6 +83,7 @@ window.addEventListener('keydown', e => {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
             player.hp = Math.min(player.hp + 30, player.maxHp);
+            sound.pickup();
             floatText.show(player.x, player.y, "+30 HP", "#00ff00");
             updateUI();
         }
@@ -64,14 +99,14 @@ window.addEventListener('mouseup', e => { if (e.button === 0) isMouseDown = fals
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 
-// --- КЛАССЫ ---
+// --- КЛАССЫ ВИЗУАЛА ---
 
 class Background {
     constructor() {
         this.stars = [];
         for(let i=0; i<60; i++) this.stars.push({
             x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-            size: Math.random() * 2, speed: Math.random() * 0.5 + 0.1
+            size: Math.random() * 3, speed: Math.random() * 0.5 + 0.1
         });
     }
     draw() {
@@ -79,7 +114,7 @@ class Background {
         this.stars.forEach(s => {
             s.y += s.speed;
             if(s.y > canvas.height) s.y = 0;
-            ctx.globalAlpha = 0.3;
+            ctx.globalAlpha = 0.2;
             ctx.fillRect(s.x, s.y, s.size, s.size);
         });
         ctx.globalAlpha = 1.0;
@@ -103,22 +138,21 @@ const floatText = new FloatingText();
 
 class Particle {
     constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
-        const a = Math.random() * Math.PI * 2;
-        const s = Math.random() * 3;
-        this.vx = Math.cos(a)*s; this.vy = Math.sin(a)*s;
-        this.life = 1.0;
+        this.x=x; this.y=y; this.color=color;
+        const a=Math.random()*Math.PI*2; const s=Math.random()*3;
+        this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s; this.life=1.0;
     }
     update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.05; return this.life > 0; }
     draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, 4, 4); ctx.globalAlpha = 1.0; }
 }
 let particles = [];
 
+// --- ЛУТ (ГЕОМЕТРИЧЕСКИЕ ФИГУРЫ) ---
 class Loot {
     constructor(x, y, type) {
-        this.x = x; this.y = y; this.type = type;
-        this.life = (type === 'star') ? 900 : 600; 
-        this.active = true; this.angle = 0; this.magnet = false;
+        this.x=x; this.y=y; this.type=type;
+        this.life = (type==='star') ? 900 : 600; 
+        this.active=true; this.angle=0; this.magnet=false;
     }
     update() {
         this.life--; this.angle += 0.05;
@@ -128,7 +162,7 @@ class Loot {
             this.x += Math.cos(a)*8; this.y += Math.sin(a)*8;
         }
         if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
-            this.active = false;
+            this.active = false; sound.pickup();
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"MEDKIT","#ff0033"); }
             else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"STAR","#ffea00"); }
             else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"MISSILE","#ffaa00"); }
@@ -140,17 +174,19 @@ class Loot {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         ctx.shadowBlur = 15;
+        // ОТРИСОВКА: ТОЛЬКО ГЕОМЕТРИЯ
         if(this.type === 'medkit') {
-            ctx.shadowColor = '#ff0033'; ctx.fillStyle = '#ff0033'; ctx.fillRect(-8,-8,16,16);
-            ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4);
+            ctx.shadowColor = '#ff0033'; ctx.fillStyle = '#ff0033'; 
+            ctx.fillRect(-8,-8,16,16); // Квадрат
+            ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4); // Крест
         } else if(this.type === 'star') {
             ctx.shadowColor = '#ffea00'; ctx.fillStyle = '#ffea00'; 
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill(); // Ромб
         } else if(this.type === 'missile') {
             ctx.shadowColor = '#ffaa00'; ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,8); ctx.lineTo(-8,8); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,8); ctx.lineTo(-8,8); ctx.fill(); // Треугольник
         } else {
-            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8);
+            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8); // Малый квадрат
         }
         ctx.restore();
     }
@@ -158,12 +194,11 @@ class Loot {
 let lootList = [];
 
 class Bullet {
-    constructor(x, y, a, dmg) {
-        this.x=x; this.y=y; this.vx=Math.cos(a)*15; this.vy=Math.sin(a)*15; this.dmg=dmg; this.active=true;
-    }
+    constructor(x, y, a, dmg) { this.x=x; this.y=y; this.vx=Math.cos(a)*15; this.vy=Math.sin(a)*15; this.dmg=dmg; this.active=true; }
     update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.active=false; }
     draw() {
-        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx, this.y-this.vy); ctx.stroke();
+        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 3; 
+        ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx, this.y-this.vy); ctx.stroke();
     }
 }
 let bullets = [];
@@ -218,6 +253,7 @@ const player = {
         if(this.cooldown<=0) {
             bullets.push(new Bullet(this.x, this.y, this.angle, this.dmg));
             this.cooldown = this.fireRate;
+            sound.shoot();
         }
     },
     tryFireMissile() {
@@ -226,6 +262,7 @@ const player = {
             if(t) {
                 missiles.push(new Missile(this.x, this.y, t));
                 this.missiles--; this.missileCd = 30; updateUI();
+                sound.shoot();
             }
         }
     },
@@ -240,6 +277,7 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         ctx.shadowBlur = 15; ctx.shadowColor = this.color; ctx.fillStyle = this.color;
+        // ТРЕУГОЛЬНИК
         ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
         ctx.restore();
     }
@@ -266,8 +304,16 @@ class Enemy {
     }
     draw() {
         ctx.save(); ctx.shadowBlur=10; ctx.shadowColor=this.color; ctx.fillStyle=this.color;
-        if(this.boss) { ctx.fillRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); ctx.strokeStyle='#fff'; ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); }
-        else { ctx.beginPath(); for(let i=0;i<6;i++) ctx.lineTo(this.x+this.r*Math.cos(i*Math.PI/3), this.y+this.r*Math.sin(i*Math.PI/3)); ctx.fill(); ctx.strokeStyle='#fff'; ctx.stroke(); }
+        // КВАДРАТ ИЛИ ШЕСТИУГОЛЬНИК (ГЕОМЕТРИЯ)
+        if(this.boss) { 
+            ctx.fillRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); // Босс - Квадрат
+            ctx.strokeStyle='#fff'; ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
+        }
+        else { 
+            ctx.beginPath(); 
+            for(let i=0;i<6;i++) ctx.lineTo(this.x+this.r*Math.cos(i*Math.PI/3), this.y+this.r*Math.sin(i*Math.PI/3)); 
+            ctx.fill(); ctx.strokeStyle='#fff'; ctx.stroke(); 
+        }
         ctx.restore();
     }
 }
@@ -326,7 +372,7 @@ function animate() {
     requestAnimationFrame(animate);
     if(currentState===STATE.MENU) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        bg.draw(); // Анимация фона в меню
+        bg.draw(); 
         return;
     }
     if(currentState!==STATE.PLAYING) return;
@@ -350,6 +396,7 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-b.x, e.y-b.y) < e.r+5) {
                 e.hp-=b.dmg; b.active=false; particles.push(new Particle(e.x,e.y,'#fff'));
+                sound.hit();
                 if(e.hp<=0) killEnemy(e,j);
                 break;
             }
@@ -363,6 +410,7 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-m.x, e.y-m.y) < e.r+10) {
                 e.hp-=100; m.active=false;
+                sound.explode();
                 for(let k=0;k<10;k++) particles.push(new Particle(m.x,m.y,'#ffaa00'));
                 if(e.hp<=0) killEnemy(e,j);
                 break;
