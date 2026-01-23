@@ -3,9 +3,13 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// ВЫСОТА МЕНЮ (ДЛЯ СДВИГА)
+const DASHBOARD_HEIGHT = 70;
+
 function resize() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Учитываем высоту меню
+    canvas.height = window.innerHeight - DASHBOARD_HEIGHT;
 }
 resize();
 window.addEventListener('resize', resize);
@@ -18,14 +22,14 @@ let scoreTime = 0;
 let killScore = 0;
 let highScore = localStorage.getItem('neonSurvivorsArenaHighScore') || 0;
 
-// УРОВНИ И ТАЙМЕРЫ
+// УРОВНИ
 let gameStage = 1;              
 let difficultyMultiplier = 1.0; 
 let timeUntilBoss = 60; 
 
-// Логика Зоны Взлома
-let zoneSpawnInterval = 10; // Изначально раз в 10 секунд
-let zoneTimer = 0; // Таймер отсчета до следующей зоны
+// ЗОНЫ И СПАВН
+let zoneSpawnInterval = 10;
+let zoneTimer = 0;
 
 let spawnTimer = 0;
 let spawnInterval = 90;
@@ -51,7 +55,12 @@ window.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
-window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+// ИСПРАВЛЕНИЕ КООРДИНАТ МЫШИ
+window.addEventListener('mousemove', e => { 
+    mouse.x = e.clientX; 
+    mouse.y = e.clientY - DASHBOARD_HEIGHT; 
+});
 
 window.addEventListener('mousedown', (e) => {
     if (currentState !== STATE.PLAYING) return;
@@ -212,17 +221,27 @@ class HackingZone {
         this.active = false;
         this.x = 0; this.y = 0;
         this.radius = 80;
-        this.timer = 3.0;
+        this.timer = 3.0; // Время захвата
+        this.life = 7.0;  // Время жизни зоны (7 секунд)
     }
     spawn() {
         this.x = Math.random() * (canvas.width - 200) + 100;
         this.y = Math.random() * (canvas.height - 200) + 100;
         this.timer = 3.0;
+        this.life = 7.0; 
         this.active = true;
         floatText.show(this.x, this.y, "HACK ZONE DETECTED", "#39ff14");
     }
     update(player) {
         if (!this.active) return;
+        
+        // Уменьшаем время жизни зоны
+        this.life -= 1/60;
+        if (this.life <= 0) {
+            this.active = false; // Зона исчезла
+            return;
+        }
+
         const dist = Math.hypot(this.x - player.x, this.y - player.y);
         
         if (dist < this.radius) {
@@ -261,10 +280,16 @@ class HackingZone {
         }
         
         ctx.fillStyle = '#fff';
-        ctx.font = "bold 20px 'Share Tech Mono'";
+        ctx.font = "bold 16px 'Share Tech Mono'";
         ctx.textAlign = "center";
-        ctx.fillText(this.timer.toFixed(2), 0, -this.radius - 10);
-        ctx.fillText(isInside ? "UPLOADING..." : "ENTER ZONE", 0, this.radius + 20);
+        
+        // Таймер взлома (Зеленый)
+        ctx.fillStyle = '#39ff14';
+        ctx.fillText("HACK: " + this.timer.toFixed(2) + "s", 0, 10);
+        
+        // Таймер жизни зоны (Красный)
+        ctx.fillStyle = '#ff2a2a';
+        ctx.fillText("ZONE: " + this.life.toFixed(1) + "s", 0, -this.radius - 10);
         
         ctx.restore();
     }
@@ -272,7 +297,6 @@ class HackingZone {
     completeHack() {
         this.active = false;
         sound.hackSuccess();
-        
         document.getElementById('hackMessage').style.display = 'flex';
         setTimeout(() => document.getElementById('hackMessage').style.display = 'none', 3000);
         
@@ -286,23 +310,20 @@ class HackingZone {
             }
         }
         player.gainXp(killCount * 10);
-        
         spawnLoot(this.x, this.y);
         spawnLoot(this.x + 30, this.y);
     }
 }
 const hackingZone = new HackingZone();
 
-// --- 5. ЛУТ (С ИСЧЕЗНОВЕНИЕМ) ---
+// --- 5. ЛУТ ---
 class SupplyBox {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.size = 25;
         this.active = true;
         this.angle = 0;
         this.type = type; 
-        
-        // --- НОВОЕ: ВРЕМЯ ЖИЗНИ ЛУТА ---
-        this.life = 600; // 10 секунд (60 fps * 10)
+        this.life = 600; 
     }
     update() { 
         this.angle += 0.05; 
@@ -311,12 +332,10 @@ class SupplyBox {
     }
     draw() {
         if (!this.active) return;
-        
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
-        // Мигание если осталось мало времени (меньше 3 сек)
         if (this.life < 180) {
             if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
         }
@@ -755,7 +774,7 @@ function spawnHackingZone() {
 
 function startGame() {
     sound.init();
-    if (sound.ctx.state === 'suspended') sound.ctx.resume(); 
+    if (sound.ctx.state === 'suspended') sound.ctx.resume(); // ПРИНУДИТЕЛЬНЫЙ ЗАПУСК ЗВУКА
 
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
