@@ -18,10 +18,14 @@ let scoreTime = 0;
 let killScore = 0;
 let highScore = localStorage.getItem('neonSurvivorsArenaHighScore') || 0;
 
-// УРОВНИ
+// УРОВНИ И ТАЙМЕРЫ
 let gameStage = 1;              
 let difficultyMultiplier = 1.0; 
 let timeUntilBoss = 60; 
+
+// Логика Зоны Взлома
+let zoneSpawnInterval = 10; // Изначально раз в 10 секунд
+let zoneTimer = 0; // Таймер отсчета до следующей зоны
 
 let spawnTimer = 0;
 let spawnInterval = 90;
@@ -202,13 +206,13 @@ class ParticlePool {
 }
 const particlePool = new ParticlePool(1000);
 
-// --- 4. ЗОНА ВЗЛОМА (НОВОЕ) ---
+// --- 4. ЗОНА ВЗЛОМА ---
 class HackingZone {
     constructor() {
         this.active = false;
         this.x = 0; this.y = 0;
         this.radius = 80;
-        this.timer = 3.0; // 3 секунды
+        this.timer = 3.0;
     }
     spawn() {
         this.x = Math.random() * (canvas.width - 200) + 100;
@@ -222,14 +226,12 @@ class HackingZone {
         const dist = Math.hypot(this.x - player.x, this.y - player.y);
         
         if (dist < this.radius) {
-            // Игрок внутри
             this.timer -= 1/60;
             if (this.timer <= 0) {
                 this.timer = 0;
                 this.completeHack();
             }
         } else {
-            // Игрок вышел - сброс
             this.timer = 3.0;
         }
     }
@@ -239,10 +241,8 @@ class HackingZone {
         const isInside = this.timer < 3.0;
         const color = isInside ? '#39ff14' : '#00f3ff';
         
-        // Круг зоны
         ctx.save();
         ctx.translate(this.x, this.y);
-        // Вращающееся кольцо
         ctx.beginPath();
         ctx.setLineDash([10, 10]);
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
@@ -251,18 +251,15 @@ class HackingZone {
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Заливка таймера (сектор)
         if (isInside) {
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            // Рисуем сектор от 0 до процента выполнения
             const percent = 1 - (this.timer / 3.0);
             ctx.arc(0, 0, this.radius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * percent));
             ctx.fillStyle = 'rgba(57, 255, 20, 0.3)';
             ctx.fill();
         }
         
-        // Текст таймера над зоной
         ctx.fillStyle = '#fff';
         ctx.font = "bold 20px 'Share Tech Mono'";
         ctx.textAlign = "center";
@@ -276,11 +273,9 @@ class HackingZone {
         this.active = false;
         sound.hackSuccess();
         
-        // Эффект взлома
         document.getElementById('hackMessage').style.display = 'flex';
         setTimeout(() => document.getElementById('hackMessage').style.display = 'none', 3000);
         
-        // Убиваем всех обычных врагов
         let killCount = 0;
         for (let i = enemies.length - 1; i >= 0; i--) {
             if (!enemies[i].isBoss) {
@@ -292,27 +287,40 @@ class HackingZone {
         }
         player.gainXp(killCount * 10);
         
-        // Даем лут
         spawnLoot(this.x, this.y);
         spawnLoot(this.x + 30, this.y);
     }
 }
 const hackingZone = new HackingZone();
 
+// --- 5. ЛУТ (С ИСЧЕЗНОВЕНИЕМ) ---
 class SupplyBox {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.size = 25;
         this.active = true;
         this.angle = 0;
         this.type = type; 
+        
+        // --- НОВОЕ: ВРЕМЯ ЖИЗНИ ЛУТА ---
+        this.life = 600; // 10 секунд (60 fps * 10)
     }
-    update() { this.angle += 0.05; }
+    update() { 
+        this.angle += 0.05; 
+        this.life--;
+        if (this.life <= 0) this.active = false;
+    }
     draw() {
         if (!this.active) return;
+        
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
+        // Мигание если осталось мало времени (меньше 3 сек)
+        if (this.life < 180) {
+            if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
+        }
+
         if (this.type === 'MISSILE') {
             ctx.fillStyle = 'rgba(255, 0, 255, 0.3)'; ctx.strokeStyle = '#ff00ff';
         } else {
@@ -322,14 +330,16 @@ class SupplyBox {
         ctx.lineWidth = 2;
         ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
         ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+        
         ctx.fillStyle = '#fff'; ctx.font = "16px Arial"; ctx.textAlign = "center";
         ctx.fillText(this.type === 'MISSILE' ? "🚀" : "🛡️", 0, 6);
         ctx.restore();
+        ctx.globalAlpha = 1.0;
     }
 }
 let lootPool = [];
 
-// --- 5. ОРУЖИЕ ---
+// --- 6. ОРУЖИЕ ---
 class BulletPool {
     constructor(size) {
         this.pool = [];
@@ -481,7 +491,7 @@ class EnemyBulletPool {
 }
 const enemyBulletPool = new EnemyBulletPool(50);
 
-// --- 6. ИГРОК ---
+// --- 7. ИГРОК ---
 class Player {
     constructor() { this.reset(); }
     reset() {
@@ -598,7 +608,7 @@ class Player {
     }
 }
 
-// --- 7. ВРАГИ ---
+// --- 8. ВРАГИ ---
 let bossActive = false;
 
 class Enemy {
@@ -706,7 +716,7 @@ class Enemy {
     }
 }
 
-// --- 8. ГЛАВНЫЙ ЦИКЛ ---
+// --- 9. ГЛАВНЫЙ ЦИКЛ ---
 const player = new Player();
 let enemies = [];
 const upgradesList = [
@@ -733,16 +743,19 @@ function spawnLoot(x, y) {
 }
 
 function spawnHackingZone() {
+    // Новая логика: Зона появляется каждые 10 сек (увеличивается с уровнем)
     if (!hackingZone.active) {
-        if (Math.random() < 0.01) { // 1% шанс каждый кадр если зоны нет
+        zoneTimer += 1/60;
+        if (zoneTimer >= zoneSpawnInterval) {
             hackingZone.spawn();
+            zoneTimer = 0;
         }
     }
 }
 
 function startGame() {
     sound.init();
-    if (sound.ctx.state === 'suspended') sound.ctx.resume(); // ПРИНУДИТЕЛЬНЫЙ ЗАПУСК ЗВУКА
+    if (sound.ctx.state === 'suspended') sound.ctx.resume(); 
 
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
@@ -758,6 +771,8 @@ function startGame() {
     gameStage = 1;
     difficultyMultiplier = 1.0;
     timeUntilBoss = 60; 
+    zoneSpawnInterval = 10;
+    zoneTimer = 0;
     
     bulletPool.pool.forEach(b => b.active = false);
     rocketPool.pool.forEach(r => r.active = false);
@@ -859,7 +874,6 @@ function animate() {
         if (timeUntilBoss <= 0) { timeUntilBoss = 0; spawnBoss(); }
         document.getElementById('bossTimer').innerText = Math.ceil(timeUntilBoss);
         
-        // Спавн зон взлома (только если нет босса)
         spawnHackingZone();
     } else {
         document.getElementById('bossTimer').innerText = "!!!";
@@ -880,7 +894,6 @@ function animate() {
 
     if (player.invincibleTimer > 0) updateUI();
 
-    // Обновляем Зону Взлома
     hackingZone.update(player);
     hackingZone.draw();
 
@@ -890,6 +903,13 @@ function animate() {
     for (let i = lootPool.length - 1; i >= 0; i--) {
         let box = lootPool[i];
         box.update(); box.draw();
+        
+        // Удаление старого лута
+        if (!box.active) {
+            lootPool.splice(i, 1);
+            continue;
+        }
+
         const d = Math.hypot(player.x - box.x, player.y - box.y);
         if (d < player.radius + box.size) {
             lootPool.splice(i, 1);
@@ -921,7 +941,6 @@ function animate() {
             if (!enemy.isBoss) enemies.splice(i, 1); continue;
         }
 
-        // ПУЛИ
         for (let b of bulletPool.pool) {
             if (!b.active) continue;
             const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
@@ -939,9 +958,16 @@ function animate() {
 
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
-                        gameStage++; difficultyMultiplier *= 1.05; 
+                        
+                        gameStage++; 
+                        difficultyMultiplier *= 1.05; 
+                        
+                        // Увеличение интервала зоны на 10%
+                        zoneSpawnInterval *= 1.1; 
+                        
                         let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
                         timeUntilBoss = nextBossTime;
+                        
                         launchFireworks(); sound.bossDeath();
                         particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
                         document.getElementById('announcementStage').innerText = gameStage;
@@ -954,7 +980,6 @@ function animate() {
             }
         }
 
-        // РАКЕТЫ
         for (let r of rocketPool.pool) {
             if (!r.active) continue;
             const dist = Math.hypot(r.x - enemy.x, r.y - enemy.y);
@@ -969,6 +994,7 @@ function animate() {
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
                         gameStage++; difficultyMultiplier *= 1.05; 
+                        zoneSpawnInterval *= 1.1;
                         let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
                         timeUntilBoss = nextBossTime;
                         launchFireworks(); sound.bossDeath();
@@ -983,7 +1009,6 @@ function animate() {
             }
         }
 
-        // РАКЕТЫ ПКМ (HOMING)
         for (let m of homingPool.pool) {
             if (!m.active) continue;
             const dist = Math.hypot(m.x - enemy.x, m.y - enemy.y);
@@ -998,6 +1023,7 @@ function animate() {
                     if (enemy.isBoss) { 
                         bossActive = false; document.getElementById('bossContainer').style.display = 'none'; 
                         gameStage++; difficultyMultiplier *= 1.05; 
+                        zoneSpawnInterval *= 1.1;
                         let nextBossTime = 60 * Math.pow(1.05, gameStage - 1);
                         timeUntilBoss = nextBossTime;
                         sound.bossDeath(); particlePool.explode(enemy.x, enemy.y, '#ff0000', 100); 
