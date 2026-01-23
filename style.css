@@ -1,103 +1,148 @@
-/* --- CYBERPUNK THEME VARIABLES --- */
+/* --- ОСНОВНЫЕ ПЕРЕМЕННЫЕ --- */
 :root {
     --cyber-cyan: #00f3ff;
     --cyber-magenta: #ff00ff;
+    --cyber-red: #ff0033; /* Цвет вывески */
     --cyber-yellow: #ffea00;
-    --cyber-orange: #ffaa00;
-    --cyber-dark: #0a0a12;
-    --cyber-alert: #ff2a2a;
     --font-header: 'Orbitron', sans-serif;
     --font-tech: 'Share Tech Mono', monospace;
 }
 
 body {
-    margin: 0; overflow: hidden; background-color: #020205;
+    margin: 0; overflow: hidden; background-color: #050505;
     font-family: var(--font-tech); color: var(--cyber-cyan); user-select: none;
 }
 canvas { display: block; cursor: crosshair; }
 
-/* ФОН */
-#retro-bg {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-family: var(--font-header); font-size: 10vw; font-weight: 900;
-    color: rgba(255, 255, 255, 0.03); z-index: 1; pointer-events: none; white-space: nowrap;
-    animation: flicker 4s infinite;
-}
-@keyframes flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 0.05; text-shadow: none; }
-    20%, 24%, 55% { opacity: 0.2; text-shadow: 0 0 30px var(--cyber-magenta); color: rgba(255, 0, 255, 0.1); }
-}
-
-/* СКАНЛАЙНЫ */
+/* --- ЭФФЕКТЫ ЭКРАНА --- */
 .scanlines {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; opacity: 0.6;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; opacity: 0.4;
 }
 #damageOverlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    box-shadow: inset 0 0 100px var(--cyber-alert); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
+    box-shadow: inset 0 0 100px var(--cyber-red); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
 }
 
-/* --- HUD (ВЕРХНЯЯ ПАНЕЛЬ) --- */
+/* --- ВЫВЕСКА RETRO GAMES (КРАСНАЯ И СЛОМАННАЯ) --- */
+.retro-sign {
+    font-family: var(--font-header);
+    font-size: 8rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.8);
+    text-shadow: 
+        0 0 10px var(--cyber-red),
+        0 0 20px var(--cyber-red),
+        0 0 40px var(--cyber-red),
+        0 0 80px var(--cyber-red);
+    margin-bottom: 10px;
+    letter-spacing: 10px;
+    z-index: 60;
+}
+
+/* Анимации поломки букв */
+.flicker-slow { animation: flicker 3s infinite alternate; }
+.flicker-fast { animation: flicker 0.5s infinite alternate; color: #550000; text-shadow: none; } /* Почти потухшая */
+.flicker-med { animation: flicker 1.5s infinite alternate; }
+.off { color: #330000; text-shadow: none; } /* Полностью не горит */
+
+@keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        opacity: 1;
+        text-shadow: 0 0 10px var(--cyber-red), 0 0 20px var(--cyber-red);
+        color: #fff;
+    }
+    20%, 24%, 55% {
+        opacity: 0.4;
+        text-shadow: none;
+        color: #550000;
+    }
+}
+
+/* --- ГЛАВНОЕ МЕНЮ И УПРАВЛЕНИЕ --- */
+.screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: #020205; z-index: 50; /* Поверх канваса */
+}
+
+.game-title {
+    font-size: 2rem; color: var(--cyber-cyan); margin-bottom: 30px; letter-spacing: 5px; opacity: 0.8;
+}
+
+.controls-box {
+    background: rgba(20, 0, 0, 0.6);
+    border: 2px solid var(--cyber-red);
+    padding: 20px 40px;
+    width: 500px;
+    margin-bottom: 40px;
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.2);
+}
+
+.controls-box h3 { color: var(--cyber-red); text-align: center; margin-top: 0; text-transform: uppercase; letter-spacing: 2px; }
+
+.info-grid { display: flex; flex-direction: column; gap: 10px; }
+.info-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 5px; }
+.key { font-weight: bold; color: var(--cyber-yellow); }
+.desc { color: #ccc; }
+
+.cyber-line { border: 0; height: 1px; background: var(--cyber-red); margin: 15px 0; opacity: 0.5; }
+.features-list p { font-size: 14px; margin: 5px 0; color: #aaa; }
+
+.big-btn {
+    font-size: 24px; padding: 20px 60px;
+    background: var(--cyber-red); color: #fff; 
+    border: 2px solid #fff; box-shadow: 0 0 15px var(--cyber-red);
+}
+.big-btn:hover {
+    background: #fff; color: var(--cyber-red); box-shadow: 0 0 30px var(--cyber-red); cursor: pointer;
+}
+
+.cyber-button {
+    padding: 15px 30px; font-family: var(--font-header); font-weight: bold;
+    border: none; cursor: pointer; text-transform: uppercase;
+    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+    margin-top: 20px;
+}
+
+/* --- HUD (В ИГРЕ) --- */
 #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
 
 #top-dashboard {
     position: absolute; top: 0; left: 0; width: 100%; height: 60px;
-    background: rgba(10, 10, 18, 0.9); border-bottom: 2px solid var(--cyber-cyan);
+    background: rgba(10, 10, 18, 0.9); border-bottom: 1px solid var(--cyber-cyan);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 30px; box-sizing: border-box; pointer-events: auto;
 }
 
 .dash-group { display: flex; align-items: center; gap: 10px; font-size: 18px; }
-.label { color: #777; font-size: 14px; font-weight: bold; }
+.label { color: #555; font-size: 12px; font-weight: bold; }
 .val-text { font-weight: bold; font-size: 20px; }
 .highlight { color: var(--cyber-yellow); }
 
-/* ЛУТ ДИСПЛЕЙ */
-.loot-display { gap: 25px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 4px; border: 1px solid #333; }
-.res-slot { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 20px; position: relative; }
-.icon { font-size: 22px; }
-.key-hint { font-size: 10px; color: #fff; opacity: 0.5; margin-left: 5px; vertical-align: middle; }
+.loot-display { gap: 20px; border-left: 1px solid #333; border-right: 1px solid #333; padding: 0 20px; }
+.res-slot { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 18px; }
+.icon { font-size: 20px; }
 
 /* БАРЫ */
-.xp-bar-mini { width: 100px; height: 8px; background: #222; border: 1px solid #444; }
+.xp-bar-mini { width: 100px; height: 6px; background: #222; }
 .xp-bar-mini .fill { height: 100%; background: var(--cyber-cyan); width: 0%; transition: width 0.2s; }
+.hp-bar-mini { width: 150px; height: 10px; background: #222; position: relative; }
+.hp-bar-mini .fill { height: 100%; background: var(--cyber-red); width: 100%; transition: width 0.2s; }
+.hp-num { font-size: 14px; min-width: 60px; text-align: right; }
 
-.hp-bar-mini { width: 150px; height: 12px; background: #222; border: 1px solid #444; position: relative; }
-.hp-bar-mini .fill { height: 100%; background: var(--cyber-alert); width: 100%; transition: width 0.2s; }
-.hp-num { font-size: 16px; min-width: 80px; text-align: right; }
-
-/* БОСС БАР */
+/* БОСС И ОКНА */
 #bossContainer { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
-.boss-label { color: var(--cyber-alert); font-weight: bold; animation: flashText 1s infinite; text-shadow: 0 0 10px var(--cyber-alert); }
-.tech-bar-container { height: 20px; background: #110000; border: 2px solid var(--cyber-alert); width: 100%; }
-.boss-fill { height: 100%; background: var(--cyber-alert); box-shadow: 0 0 15px var(--cyber-alert); transition: width 0.1s; }
+.boss-label { color: var(--cyber-red); font-weight: bold; animation: flashText 0.5s infinite alternate; }
+.tech-bar-container { height: 15px; background: #000; border: 1px solid var(--cyber-red); width: 100%; }
+.boss-fill { height: 100%; background: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red); }
 
-@keyframes flashText { from { opacity: 0.5; } to { opacity: 1; } }
-
-/* МЕНЮ И КНОПКИ */
-.screen {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    background: rgba(5, 5, 10, 0.95); z-index: 50;
+.cyber-panel { border: 1px solid var(--cyber-cyan); background: rgba(5, 5, 10, 0.95); padding: 30px; text-align: center; }
+.upgrade-card { 
+    background: #111; border: 1px solid #333; padding: 15px; margin: 10px; width: 180px; 
+    cursor: pointer; transition: 0.2s; 
 }
-.cyber-panel { border: 2px solid var(--cyber-cyan); box-shadow: 0 0 20px rgba(0,243,255,0.2); }
-.cyber-glitch { font-family: var(--font-header); font-size: 4em; color: var(--cyber-cyan); text-shadow: 3px 3px 0 var(--cyber-magenta); margin-bottom: 10px; }
-.cyber-subtext { font-size: 18px; color: #aaa; margin-bottom: 40px; letter-spacing: 2px; }
-.cyber-button {
-    padding: 15px 40px; font-family: var(--font-header); font-size: 20px; font-weight: bold;
-    color: #000; background: var(--cyber-cyan); border: none; cursor: pointer;
-    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); transition: 0.2s;
-}
-.cyber-button:hover { background: var(--cyber-yellow); transform: scale(1.05); }
-
-.upgrade-card {
-    background: rgba(0, 255, 255, 0.05); border: 2px solid var(--cyber-cyan); padding: 20px; margin: 10px; width: 200px; cursor: pointer; text-align: center;
-}
-.upgrade-card:hover { background: rgba(0, 255, 255, 0.2); border-color: var(--cyber-yellow); }
-#upgradeContainer { display: flex; flex-wrap: wrap; justify-content: center; }
-
-/* ТИПОГРАФИКА */
-.cyber-text { font-family: var(--font-header); }
-.alert-text { color: var(--cyber-alert); text-shadow: 2px 2px 0 #fff; }
+.upgrade-card:hover { border-color: var(--cyber-yellow); transform: translateY(-5px); }
+.alert-text { color: var(--cyber-red); font-size: 3rem; margin: 0; }
