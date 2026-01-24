@@ -57,6 +57,7 @@ class SoundManager {
     shoot() { this.playTone(400, 'square', 0.1, 0.05); }
     hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
     pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
+    powerup() { this.playTone(300, 'square', 0.3, 0.15); } // Звук для мега-аптечки
     explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
 }
 const sound = new SoundManager();
@@ -66,12 +67,12 @@ window.onload = function() {
     const startBtn = document.getElementById('startBtn');
     if(startBtn) {
         startBtn.onclick = () => {
-            sound.init(); // Включаем звук по клику
+            sound.init(); 
             startGame();
         };
     }
     document.getElementById('resumeBtn').onclick = togglePause;
-    animate(); // Запускаем цикл отрисовки меню
+    animate(); 
 };
 
 window.addEventListener('keydown', e => {
@@ -151,7 +152,8 @@ let particles = [];
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = (type==='star') ? 900 : 600; 
+        // Звезды и мега-аптечка живут дольше
+        this.life = (type==='star' || type==='mega_medkit') ? 900 : 600; 
         this.active=true; this.angle=0; this.magnet=false;
     }
     update() {
@@ -161,12 +163,19 @@ class Loot {
             const a = Math.atan2(player.y - this.y, player.x - this.x);
             this.x += Math.cos(a)*8; this.y += Math.sin(a)*8;
         }
-        if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
+        if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; sound.pickup();
+            
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"MEDKIT","#ff0033"); }
+            else if(this.type === 'mega_medkit') { 
+                player.hp = player.maxHp; // ПОЛНОЕ ЛЕЧЕНИЕ
+                sound.powerup();
+                floatText.show(this.x,this.y,"FULL RESTORE","#00ff00"); 
+            }
             else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"STAR","#ffea00"); }
             else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"MISSILE","#ffaa00"); }
             else if(this.type === 'xp') player.gainXp(10);
+            
             updateUI();
         }
         if(this.life<=0) this.active = false;
@@ -177,16 +186,26 @@ class Loot {
         // ОТРИСОВКА: ТОЛЬКО ГЕОМЕТРИЯ
         if(this.type === 'medkit') {
             ctx.shadowColor = '#ff0033'; ctx.fillStyle = '#ff0033'; 
-            ctx.fillRect(-8,-8,16,16); // Квадрат
-            ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4); // Крест
-        } else if(this.type === 'star') {
+            ctx.fillRect(-8,-8,16,16); 
+            ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4); 
+        } 
+        else if (this.type === 'mega_medkit') { // Награда с босса
+            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; 
+            // Большой зеленый плюс
+            ctx.fillRect(-12,-4,24,8);
+            ctx.fillRect(-4,-12,8,24);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.strokeRect(-12,-4,24,8);
+            ctx.strokeRect(-4,-12,8,24);
+        }
+        else if(this.type === 'star') {
             ctx.shadowColor = '#ffea00'; ctx.fillStyle = '#ffea00'; 
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill(); // Ромб
+            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill(); 
         } else if(this.type === 'missile') {
             ctx.shadowColor = '#ffaa00'; ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,8); ctx.lineTo(-8,8); ctx.fill(); // Треугольник
+            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,8); ctx.lineTo(-8,8); ctx.fill(); 
         } else {
-            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8); // Малый квадрат
+            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8); 
         }
         ctx.restore();
     }
@@ -304,9 +323,8 @@ class Enemy {
     }
     draw() {
         ctx.save(); ctx.shadowBlur=10; ctx.shadowColor=this.color; ctx.fillStyle=this.color;
-        // КВАДРАТ ИЛИ ШЕСТИУГОЛЬНИК (ГЕОМЕТРИЯ)
         if(this.boss) { 
-            ctx.fillRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); // Босс - Квадрат
+            ctx.fillRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
             ctx.strokeStyle='#fff'; ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
         }
         else { 
@@ -346,7 +364,14 @@ function showUpgrades() {
     const opts = [
         {n:"УРОН", d:"+10 Dmg", f:()=>{player.dmg+=10;}},
         {n:"СКОРОСТЬ", d:"Fire Rate", f:()=>{player.fireRate=Math.max(5,player.fireRate-2);}},
-        {n:"HP", d:"+20 MaxHP", f:()=>{player.maxHp+=20;player.hp+=20;}},
+        {
+            n:"HP BOOST", 
+            d:"+20 MaxHP & FULL HEAL", 
+            f:()=>{ 
+                player.maxHp+=20; 
+                player.hp = player.maxHp; // ПОЛНОЕ ЛЕЧЕНИЕ ПРИ ПРОКАЧКЕ
+            }
+        },
         {n:"РАКЕТЫ", d:"+3 Ammo", f:()=>{player.missiles+=3;}}
     ];
     opts.sort(()=>Math.random()-0.5).slice(0,3).forEach(u=>{
@@ -439,9 +464,22 @@ function animate() {
 
 function killEnemy(e, idx) {
     enemies.splice(idx,1); killScore+=e.boss?1000:100;
-    lootList.push(new Loot(e.x,e.y,e.boss?'xp':'xp'));
-    if(Math.random()<0.05) lootList.push(new Loot(e.x+10,e.y,'medkit'));
-    if(Math.random()<0.60) lootList.push(new Loot(e.x-10,e.y,'star'));
-    if(Math.random()<0.15) lootList.push(new Loot(e.x,e.y+10,'missile'));
-    if(e.boss) { bossActive=false; document.getElementById('bossContainer').style.display='none'; scoreTime=0; }
+    
+    // ЛУТ С ОБЫЧНЫХ
+    if(!e.boss) {
+        lootList.push(new Loot(e.x,e.y,'xp'));
+        if(Math.random()<0.05) lootList.push(new Loot(e.x+10,e.y,'medkit'));
+        if(Math.random()<0.60) lootList.push(new Loot(e.x-10,e.y,'star'));
+        if(Math.random()<0.15) lootList.push(new Loot(e.x,e.y+10,'missile'));
+    } 
+    // ЛУТ С БОССА (ГАРАНТИРОВАННОЕ ПОЛНОЕ ЛЕЧЕНИЕ)
+    else {
+        lootList.push(new Loot(e.x,e.y,'mega_medkit')); // Мега-аптечка
+        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'star'));
+        for(let k=0;k<3;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'missile'));
+        
+        bossActive=false; 
+        document.getElementById('bossContainer').style.display='none'; 
+        scoreTime=0; 
+    }
 }
