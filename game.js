@@ -27,82 +27,33 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// --- ПРОДВИНУТЫЙ ЗВУКОВОЙ ДВИЖОК (БЕЗ ФАЙЛОВ) ---
+// --- ЗВУКОВОЙ ДВИЖОК ---
 class SoundManager {
-    constructor() {
-        this.ctx = null;
-        this.masterGain = null;
-    }
-
+    constructor() { this.ctx = null; }
     init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.2; // Громкость 20%
-            this.masterGain.connect(this.ctx.destination);
-        }
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+        if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+        if (this.ctx.state === 'suspended') { this.ctx.resume(); }
     }
-
-    playTone(freq, type, duration, vol = 1.0, slideFreq = null) {
-        if (!this.ctx) return;
+    playTone(freq, type, dur, vol=0.1) {
+        if(!this.ctx) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        if (slideFreq) {
-            osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration);
-        }
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        osc.connect(gain); gain.connect(this.masterGain);
-        osc.start(); osc.stop(this.ctx.currentTime + duration);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + dur);
     }
-
-    playNoise(duration, vol = 1.0) {
-        if (!this.ctx) return;
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass'; filter.frequency.value = 1000;
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-        noise.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
-        noise.start();
-    }
-
-    // ЗВУКИ
-    shoot() { this.playTone(800, 'square', 0.15, 0.1, 300); }
-    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05, 100); }
-    hit() { this.playTone(150, 'sawtooth', 0.1, 0.2, 50); this.playNoise(0.1, 0.1); }
-    pickup() { this.playTone(1200, 'sine', 0.1, 0.1, 1800); }
-    heal() { 
-        if(!this.ctx) return;
-        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
-        osc.connect(gain); gain.connect(this.masterGain);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.3);
-    }
-    powerup() { 
-        this.playTone(400, 'square', 0.1, 0.1);
-        setTimeout(() => this.playTone(600, 'square', 0.1, 0.1), 100);
-        setTimeout(() => this.playTone(800, 'square', 0.2, 0.1), 200);
-    }
-    explode() { this.playNoise(0.4, 0.4); }
-    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05, 50); }
-    blackHoleBoom() { this.playNoise(1.0, 0.5); }
+    shoot() { this.playTone(400, 'square', 0.1, 0.05); }
+    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05); }
+    hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
+    pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
+    heal() { this.playTone(400, 'sine', 0.2, 0.1); }
+    powerup() { this.playTone(300, 'square', 0.3, 0.15); }
+    explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
+    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05); }
+    blackHoleBoom() { this.playTone(50, 'square', 1.0, 0.3); }
 }
 const sound = new SoundManager();
 
@@ -134,7 +85,7 @@ window.addEventListener('keydown', e => {
     keys[e.code] = true; keys[e.key] = true;
     if ((e.code === 'Escape' || e.code === 'KeyP') && currentState === STATE.PLAYING) togglePause();
     
-    // Аптечка [1]
+    // Активация аптечки кнопкой 1
     if (e.key === '1' && currentState === STATE.PLAYING) {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
@@ -206,7 +157,7 @@ class Particle {
 }
 let particles = [];
 
-// --- ЧЕРНАЯ ДЫРА ---
+// --- ЧЕРНАЯ ДЫРА (УЛУЧШЕННАЯ) ---
 class BlackHole {
     constructor() {
         this.x = Math.random() * (canvas.width - 100) + 50;
@@ -214,20 +165,24 @@ class BlackHole {
         this.maxLife = 420; // 7 секунд
         this.life = this.maxLife;
         this.active = true;
-        this.radius = 60;
+        this.radius = 70;
         this.charge = 0; 
         this.maxCharge = 180; // 3 секунды
+        this.angle = 0;
     }
     update() {
         if (!this.active) return;
+        this.angle += 0.1;
         
         const dist = Math.hypot(player.x - this.x, player.y - this.y);
         
         if (dist < this.radius) {
             this.charge++;
-            this.life = this.maxLife; 
-            if (frameCount % 15 === 0) sound.blackHoleCharge();
-            particles.push(new Particle(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, '#00ffff'));
+            this.life = this.maxLife; // Заморозка таймера исчезновения
+            if (frameCount % 10 === 0) sound.blackHoleCharge();
+            // Частицы затягивания
+            particles.push(new Particle(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100, '#a020f0'));
+            
             if (this.charge >= this.maxCharge) this.explode();
         } else {
             this.life--;
@@ -238,49 +193,83 @@ class BlackHole {
     explode() {
         this.active = false;
         sound.blackHoleBoom();
-        enemies.forEach((e, idx) => {
-            if (e.isBoss) {
-                e.hp -= 800; floatText.show(e.x, e.y, "-800 CRIT", "#ff00ff");
+        
+        // УНИЧТОЖЕНИЕ ВСЕХ ВРАГОВ
+        // Создаем копию массива, чтобы безопасно удалять
+        [...enemies].forEach((e, idx) => {
+            if (e.type === 'boss') {
+                e.hp -= 1000; // Босс получает урон
+                floatText.show(e.x, e.y, "-1000 CRIT", "#ff00ff");
             } else {
-                e.hp = 0; particles.push(new Particle(e.x, e.y, '#ff0000')); killEnemy(e, idx);
+                // Обычные враги умирают мгновенно
+                e.hp = 0;
+                // Спавним частицы смерти
+                for(let i=0; i<5; i++) particles.push(new Particle(e.x, e.y, e.color));
+                // Удаляем из основного массива через функцию убийства (чтобы дропался лут и т.д.)
+                // Находим актуальный индекс, так как массив меняется
+                const realIdx = enemies.indexOf(e);
+                if (realIdx > -1) killEnemy(e, realIdx);
             }
         });
-        for(let i=0; i<60; i++) particles.push(new Particle(this.x, this.y, '#ffffff'));
-        floatText.show(this.x, this.y, "VOID BURST!", "#ffffff");
+
+        // Визуальный взрыв
+        for(let i=0; i<100; i++) {
+            const p = new Particle(this.x, this.y, '#ffffff');
+            p.vx *= 3; p.vy *= 3;
+            particles.push(p);
+        }
+        floatText.show(this.x, this.y, "EVENT HORIZON!", "#ffffff");
     }
     draw() {
         if (!this.active) return;
         ctx.save(); ctx.translate(this.x, this.y);
-        const rot = frameCount * 0.1; ctx.rotate(rot);
-        ctx.strokeStyle = '#990099'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.stroke();
-        ctx.fillStyle = '#110011';
-        ctx.beginPath(); ctx.arc(0, 0, this.radius - 5, 0, Math.PI*2); ctx.fill();
-        const chargePct = this.charge / this.maxCharge;
-        if(chargePct > 0) {
-            ctx.fillStyle = '#00ffff'; ctx.globalAlpha = 0.6;
-            ctx.beginPath(); ctx.arc(0, 0, (this.radius - 5) * chargePct, 0, Math.PI*2); ctx.fill();
+        
+        // 1. Аккреционный диск (Вращающийся)
+        ctx.rotate(this.angle);
+        const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, this.radius);
+        gradient.addColorStop(0, 'rgba(0,0,0,1)');
+        gradient.addColorStop(0.5, 'rgba(75, 0, 130, 0.8)'); // Индиго
+        gradient.addColorStop(1, 'rgba(148, 0, 211, 0)'); // Фиолетовый прозрачный
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.fill();
+
+        // 2. Горизонт событий (Черный центр)
+        ctx.fillStyle = '#000';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#a020f0';
+        ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.4, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 3. Кольцо прогресса (Синее)
+        if (this.charge > 0) {
+            const pct = this.charge / this.maxCharge;
+            ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.5 * pct + 20, 0, Math.PI*2); ctx.stroke();
         }
+
         ctx.restore();
 
+        // ТАЙМЕРЫ
         ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
         if (this.charge > 0) {
             const secLeft = ((this.maxCharge - this.charge) / 60).toFixed(1);
-            ctx.fillStyle = '#00ffff'; ctx.fillText(`DETONATE: ${secLeft}`, this.x, this.y - this.radius - 15);
+            ctx.fillStyle = '#00ffff'; 
+            ctx.fillText(`CHARGE: ${secLeft}`, this.x, this.y - this.radius - 10);
         } else {
             const secLife = (this.life / 60).toFixed(1);
-            ctx.fillStyle = '#ff0055'; ctx.fillText(`VANISH: ${secLife}`, this.x, this.y - this.radius - 15);
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillText(`VANISH: ${secLife}`, this.x, this.y - this.radius - 10);
         }
     }
 }
 let blackHoles = [];
 
 
-// --- ЛУТ (3D ИКОНКИ) ---
+// --- ЛУТ ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = 600; 
+        this.life = 600; // 10 секунд
         this.active=true; 
         this.hoverOffset = 0;
     }
@@ -290,6 +279,7 @@ class Loot {
         
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; 
+            
             if(this.type === 'medkit') { 
                 if (player.hp < player.maxHp - 0.5) {
                     player.heal(player.maxHp * 0.25);
@@ -298,10 +288,18 @@ class Loot {
                     medkits++; sound.pickup(); floatText.show(this.x, this.y, "STORED", "#00ffff");
                 }
             }
-            else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); }
-            else if(this.type === 'star') { stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 STAR","#ffea00"); }
-            else if(this.type === 'missile') { player.missiles++; sound.pickup(); floatText.show(this.x,this.y,"+1 ROCKET","#ffaa00"); }
-            else if(this.type === 'xp') { sound.pickup(); player.gainXp(10); }
+            else if(this.type === 'mega_medkit') { 
+                player.heal(9999); sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); 
+            }
+            else if(this.type === 'star') { 
+                stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 STAR","#ffea00"); 
+            }
+            else if(this.type === 'missile') { 
+                player.missiles++; sound.pickup(); floatText.show(this.x,this.y,"+1 ROCKET","#ffaa00"); 
+            }
+            else if(this.type === 'xp') { 
+                sound.pickup(); player.gainXp(10); 
+            }
             updateUI();
         }
         if(this.life<=0) this.active = false;
@@ -310,19 +308,19 @@ class Loot {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
         if(this.type === 'medkit') {
-            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
+            // АПТЕЧКА (ЧЕМОДАН)
+            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
             ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
             ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); 
             ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
             ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); 
             ctx.shadowBlur = 0;
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; ctx.fillText("HP", 0, -22);
         } 
         else if (this.type === 'mega_medkit') {
             ctx.shadowBlur = 15; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.roundRect(-14, -14, 28, 28, 6); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.fillText("+", 0, 8);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
             const pulse = 1 + Math.sin(frameCount * 0.2) * 0.2; ctx.scale(pulse, pulse);
@@ -338,12 +336,10 @@ class Loot {
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(4,4); ctx.lineTo(-4,4); ctx.fill();
             ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(6,10); ctx.lineTo(-6,10); ctx.fill();
-            ctx.rotate(Math.PI/4);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffaa00'; ctx.textAlign = "center"; ctx.fillText("ROCKET", 0, -15);
         } else {
+            // XP (без текста)
             ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.fillRect(-5,-5,10,10);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.textAlign = "center"; ctx.fillText("XP", 0, -10);
         }
         ctx.restore();
     }
@@ -466,6 +462,7 @@ const player = {
             gameOver();
             return;
         }
+        
         updateUI();
         sound.hit();
     },
