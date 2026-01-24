@@ -51,6 +51,8 @@ class SoundManager {
     pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
     powerup() { this.playTone(300, 'square', 0.3, 0.15); }
     explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
+    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05); }
+    blackHoleBoom() { this.playTone(50, 'square', 1.0, 0.3); }
 }
 const sound = new SoundManager();
 
@@ -67,8 +69,6 @@ window.onload = function() {
 window.addEventListener('keydown', e => {
     keys[e.code] = true; keys[e.key] = true;
     if ((e.code === 'Escape' || e.code === 'KeyP') && currentState === STATE.PLAYING) togglePause();
-    
-    // Аптечка [1]
     if (e.key === '1' && currentState === STATE.PLAYING) {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
@@ -89,7 +89,7 @@ window.addEventListener('mouseup', e => { if (e.button === 0) isMouseDown = fals
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 
-// --- ВИЗУАЛ И ЭФФЕКТЫ ---
+// --- ЭФФЕКТЫ ---
 class Background {
     constructor() {
         this.stars = [];
@@ -115,7 +115,7 @@ const bg = new Background();
 
 class FloatingText {
     constructor() { this.pool = []; }
-    show(x, y, text, color) { this.pool.push({x, y, text, color, life: 50}); }
+    show(x, y, text, color) { this.pool.push({x, y, text, color, life: 60}); }
     updateAndDraw() {
         ctx.font = "bold 16px 'Share Tech Mono'";
         for (let i = this.pool.length - 1; i >= 0; i--) {
@@ -142,30 +142,133 @@ class Particle {
 }
 let particles = [];
 
-// --- ЛУТ (ИКОНКИ) ---
+// --- ЧЕРНАЯ ДЫРА ---
+class BlackHole {
+    constructor() {
+        // Спавн в случайном месте, но не слишком близко к краям
+        this.x = Math.random() * (canvas.width - 100) + 50;
+        this.y = Math.random() * (canvas.height - 100) + 50;
+        this.life = 420; // 7 секунд (60 fps * 7)
+        this.active = true;
+        this.radius = 50;
+        this.charge = 0; // Время нахождения игрока внутри
+        this.maxCharge = 180; // 3 секунды для активации
+    }
+
+    update() {
+        this.life--;
+        if (this.life <= 0) {
+            this.active = false;
+        }
+
+        // Проверка дистанции до игрока
+        const dist = Math.hypot(player.x - this.x, player.y - this.y);
+        if (dist < this.radius) {
+            this.charge++;
+            if (frameCount % 10 === 0) sound.blackHoleCharge();
+            
+            // Визуальный эффект зарядки
+            particles.push(new Particle(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, '#00ffff'));
+
+            // Активация
+            if (this.charge >= this.maxCharge) {
+                this.explode();
+            }
+        } else {
+            // Если игрок вышел, заряд медленно падает
+            if(this.charge > 0) this.charge--;
+        }
+    }
+
+    explode() {
+        this.active = false;
+        sound.blackHoleBoom();
+        
+        // Убиваем всех врагов (кроме босса, ему наносим урон)
+        enemies.forEach((e, idx) => {
+            if (e.isBoss) {
+                e.hp -= 500;
+                floatText.show(e.x, e.y, "-500 DAMAGE", "#ff00ff");
+            } else {
+                e.hp = 0;
+                particles.push(new Particle(e.x, e.y, '#ff0000'));
+                killEnemy(e, idx);
+            }
+        });
+        
+        // Визуальный взрыв
+        for(let i=0; i<50; i++) {
+            particles.push(new Particle(this.x, this.y, '#ffffff'));
+        }
+        floatText.show(this.x, this.y, "GRAVITY COLLAPSE!", "#ffffff");
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Вращение дыры
+        const rot = frameCount * 0.1;
+        ctx.rotate(rot);
+
+        // Внешнее кольцо (Таймер жизни)
+        ctx.globalAlpha = this.life / 100;
+        ctx.strokeStyle = '#330033';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.stroke();
+
+        // Спираль (Сама дыра)
+        ctx.fillStyle = '#110011';
+        ctx.beginPath(); ctx.arc(0, 0, this.radius - 5, 0, Math.PI*2); ctx.fill();
+        
+        // Прогресс зарядки (Синий круг внутри)
+        const chargePct = this.charge / this.maxCharge;
+        ctx.fillStyle = '#00f3ff';
+        ctx.globalAlpha = 0.5 + (Math.sin(frameCount*0.5)*0.2);
+        ctx.beginPath(); ctx.arc(0, 0, (this.radius - 10) * chargePct, 0, Math.PI*2); ctx.fill();
+
+        ctx.restore();
+
+        // Текст таймера над дырой
+        if (this.active) {
+            ctx.fillStyle = '#fff';
+            ctx.font = "12px monospace";
+            ctx.textAlign = "center";
+            const secLeft = Math.ceil((this.maxCharge - this.charge) / 60);
+            if (this.charge > 0) ctx.fillText(`HOLD: ${secLeft}s`, this.x, this.y - 60);
+        }
+    }
+}
+let blackHoles = [];
+
+
+// --- ЛУТ (ЧЕТКИЕ ИКОНКИ И ТЕКСТ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = (type==='star' || type==='mega_medkit') ? 900 : 600; 
-        this.active=true; this.angle=0; this.magnet=false;
+        this.life = 600; // 10 секунд для всего (как просил)
+        this.active=true; 
         this.hoverOffset = 0;
     }
     update() {
         this.life--; 
-        this.hoverOffset = Math.sin(frameCount * 0.1) * 3; // Анимация парения
+        this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
 
-        if(Math.hypot(player.x - this.x, player.y - this.y) < 150) this.magnet = true;
-        if(this.magnet) {
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            this.x += Math.cos(a)*8; this.y += Math.sin(a)*8;
-        }
-        if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
+        // МАГНИТА НЕТ (УБРАНО ПО ПРОСЬБЕ)
+        // Игрок должен подойти сам
+
+        // Подбор
+        if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
             this.active = false; sound.pickup();
-            if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"MEDKIT","#ff0033"); }
-            else if(this.type === 'mega_medkit') { player.hp = player.maxHp; sound.powerup(); floatText.show(this.x,this.y,"FULL RESTORE","#00ff00"); }
-            else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"STAR","#ffea00"); }
-            else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"MISSILE","#ffaa00"); }
+            
+            if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"+1 MEDKIT","#ff0033"); }
+            else if(this.type === 'mega_medkit') { 
+                player.hp = player.maxHp; sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); 
+            }
+            else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"+1 STAR","#ffea00"); }
+            else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"+1 ROCKET","#ffaa00"); }
             else if(this.type === 'xp') player.gainXp(10);
+            
             updateUI();
         }
         if(this.life<=0) this.active = false;
@@ -173,44 +276,48 @@ class Loot {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
+        // Подпись предмета (ВСЕГДА ВИДНА)
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.shadowBlur = 0;
+        
         if(this.type === 'medkit') {
-            // Белый кейс с красным крестом
-            ctx.fillStyle = '#eee';
-            ctx.beginPath(); ctx.roundRect(-10, -8, 20, 16, 2); ctx.fill();
-            // Красный крест
-            ctx.fillStyle = '#ff0033';
-            ctx.fillRect(-2, -5, 4, 10); ctx.fillRect(-5, -2, 10, 4);
-            // Ручка
-            ctx.strokeStyle = '#ccc'; ctx.lineWidth=2;
-            ctx.beginPath(); ctx.moveTo(-4,-8); ctx.lineTo(-4,-10); ctx.lineTo(4,-10); ctx.lineTo(4,-8); ctx.stroke();
+            // Иконка
+            ctx.fillStyle = '#eee'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 20, 2); ctx.fill();
+            ctx.fillStyle = '#ff0033'; ctx.fillRect(-3, -7, 6, 14); ctx.fillRect(-7, -3, 14, 6);
+            // Текст
+            ctx.fillStyle = '#fff'; ctx.fillText("MEDKIT", 0, -15);
         } 
         else if (this.type === 'mega_medkit') {
-            // Большой зеленый контейнер
+            // Иконка
             ctx.shadowBlur = 10; ctx.shadowColor = '#00ff00';
-            ctx.fillStyle = '#00ff00';
-            ctx.beginPath(); ctx.roundRect(-12, -12, 24, 24, 4); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.font = "bold 16px Arial"; ctx.fillText("H", -6, 6);
+            ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.roundRect(-14, -14, 28, 28, 4); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = "bold 20px Arial"; ctx.fillText("+", 0, 7);
+            // Текст
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL HEAL", 0, -20);
         }
         else if(this.type === 'star') {
-            // Золотая монета
+            // Иконка
             ctx.shadowBlur = 10; ctx.shadowColor = '#ffea00';
-            ctx.fillStyle = '#ffea00';
-            ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#b8860b';
-            ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ffea00'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#b8860b'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
+            // Текст
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffea00'; ctx.fillText("BONUS", 0, -15);
         } 
         else if(this.type === 'missile') {
-            // Ракета
+            // Иконка
             ctx.rotate(-Math.PI/4);
-            ctx.fillStyle = '#ccc';
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(3,3); ctx.lineTo(-3,3); ctx.fill(); // Тело
-            ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.moveTo(0,3); ctx.lineTo(5,8); ctx.lineTo(-5,8); ctx.fill(); // Хвост
+            ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(4,4); ctx.lineTo(-4,4); ctx.fill();
+            ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(6,10); ctx.lineTo(-6,10); ctx.fill();
+            ctx.rotate(Math.PI/4); // Возвращаем поворот для текста
+            // Текст
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffaa00'; ctx.fillText("ROCKET", 0, -15);
         } else {
-            // XP (Светящийся куб)
+            // XP
             ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
-            ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8);
+            ctx.fillStyle = '#00ff00'; ctx.fillRect(-5,-5,10,10);
+            // Текст
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("XP", 0, -10);
         }
         ctx.restore();
     }
@@ -246,17 +353,14 @@ class Missile {
     }
     draw() {
         ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-        // Рисуем ракету
-        ctx.fillStyle = '#888';
-        ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(-4,4); ctx.lineTo(-4,-4); ctx.fill();
-        ctx.fillStyle = '#ffaa00'; // Огонь
-        ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-8,3); ctx.lineTo(-8,-3); ctx.fill();
+        ctx.fillStyle = '#888'; ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(-4,4); ctx.lineTo(-4,-4); ctx.fill();
+        ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-8,3); ctx.lineTo(-8,-3); ctx.fill();
         ctx.restore();
     }
 }
 let missiles = [];
 
-// --- ИГРОК (КОСМИЧЕСКИЙ КОРАБЛЬ) ---
+// --- ИГРОК (КОРАБЛЬ) ---
 const player = {
     x: 0, y: 0, radius: 15, color: '#00f3ff', speed: 5, angle: 0,
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
@@ -306,39 +410,22 @@ const player = {
     },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        
-        // Пламя двигателя
+        // Двигатели
         const flicker = Math.random() * 5;
-        ctx.fillStyle = '#00ffff';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
+        ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
         ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-20 - flicker, 5); ctx.lineTo(-20 - flicker, -5); ctx.fill();
         ctx.shadowBlur = 0;
-
-        // Корпус корабля (Сложная форма)
-        ctx.fillStyle = '#222';
-        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
-        
-        ctx.beginPath();
-        ctx.moveTo(15, 0);  // Нос
-        ctx.lineTo(-5, 12); // Правое крыло (низ)
-        ctx.lineTo(-5, 5);  // Правый стык
-        ctx.lineTo(-15, 8); // Правый двигатель
-        ctx.lineTo(-10, 0); // Центр зад
-        ctx.lineTo(-15, -8);// Левый двигатель
-        ctx.lineTo(-5, -5); // Левый стык
-        ctx.lineTo(-5, -12);// Левое крыло (низ)
-        ctx.closePath();
+        // Корпус
+        ctx.fillStyle = '#222'; ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 12); ctx.lineTo(-5, 5); ctx.lineTo(-15, 8); ctx.lineTo(-10, 0); ctx.lineTo(-15, -8); ctx.lineTo(-5, -5); ctx.lineTo(-5, -12); ctx.closePath();
         ctx.fill(); ctx.stroke();
-
-        // Кабина пилота
-        ctx.fillStyle = '#ccffff';
-        ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI*2); ctx.fill();
-
+        // Кабина
+        ctx.fillStyle = '#ccffff'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI*2); ctx.fill();
         ctx.restore();
     }
 };
 
-// --- ВРАГИ (ДЕТАЛИЗИРОВАННЫЕ) ---
+// --- ВРАГИ ---
 class Enemy {
     constructor(boss=false) {
         this.boss = boss;
@@ -379,40 +466,26 @@ class Enemy {
         
         if(this.boss) { 
             ctx.rotate(this.rotation);
-            // Ядро
             ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill();
-            // Броня (4 пластины)
             ctx.fillStyle = this.color;
             for(let i=0; i<4; i++) {
-                ctx.rotate(Math.PI/2);
-                ctx.fillRect(-10, -60, 20, 20);
-                ctx.strokeStyle='#fff'; ctx.strokeRect(-10, -60, 20, 20);
-                // Соединения
+                ctx.rotate(Math.PI/2); ctx.fillRect(-10, -60, 20, 20); ctx.strokeStyle='#fff'; ctx.strokeRect(-10, -60, 20, 20);
                 ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(0,-60); ctx.stroke();
             }
         }
         else if(this.type === 'tank') {
-            // Танк: Восьмиугольник с пушкой
-            ctx.fillStyle = '#440044';
-            ctx.beginPath(); 
-            for(let i=0;i<8;i++) ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4));
-            ctx.fill();
+            ctx.translate(this.x, this.y); ctx.rotate(Math.PI/4); 
+            ctx.fillStyle = '#440044'; ctx.beginPath(); for(let i=0;i<8;i++) ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4)); ctx.fill();
             ctx.strokeStyle = this.color; ctx.lineWidth=3; ctx.stroke();
-            // Пушка
             ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
         }
         else if(this.type === 'runner') {
-            // Бегун: Истребитель
             ctx.rotate(this.angle);
-            ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
+            ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
         }
         else { 
-            // Обычный: Дрон с глазом
-            ctx.fillStyle = '#003300';
-            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#003300'; ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
             ctx.strokeStyle = this.color; ctx.lineWidth=2; ctx.stroke();
-            // Глаз
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
         }
@@ -431,7 +504,7 @@ function findNearestEnemy(x,y) {
 function startGame() {
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
-    player.reset(); enemies=[]; bullets=[]; lootList=[]; missiles=[]; particles=[];
+    player.reset(); enemies=[]; bullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
     medkits=0; stars=0; scoreTime=0; killScore=0; bossActive=false;
     currentState = STATE.PLAYING;
     updateUI();
@@ -486,10 +559,18 @@ function animate() {
     if(frameCount%60===0 && !bossActive) {
         scoreTime++; updateUI();
         if(scoreTime>0 && scoreTime%60===0) { bossActive=true; enemies=[]; enemies.push(new Enemy(true)); }
+        
+        // Шанс появления черной дыры (раз в ~30 сек случайно)
+        if(Math.random() < 0.03) blackHoles.push(new BlackHole());
     }
     if(!bossActive && frameCount%spawnInterval===0 && enemies.length<MAX_ENEMIES) enemies.push(new Enemy());
 
     player.update(); player.draw();
+
+    blackHoles.forEach((bh, i) => {
+        bh.update(); bh.draw();
+        if(!bh.active) blackHoles.splice(i, 1);
+    });
 
     bullets.forEach((b,i)=>{
         b.update(); b.draw();
