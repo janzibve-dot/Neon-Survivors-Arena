@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neon Survivors</title>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,8 +16,6 @@
     </div>
 
     <button id="langBtn" class="lang-button">RU</button>
-    <button id="musicBtn" class="music-button">♫ OFF</button>
-    
     <div id="achievementContainer"></div>
 
     <div id="startScreen" class="screen">
@@ -27,7 +24,6 @@
             <span class="flicker-med">G</span>AM<span class="off">E</span>S
         </div>
         <h1 class="game-title">CYBERPUNK SURVIVOR</h1>
-        
         <div class="controls-box cyber-panel">
             <h3 data-lang="controls_title">:: УПРАВЛЕНИЕ СИСТЕМОЙ ::</h3>
             <div class="info-grid">
@@ -36,17 +32,14 @@
                 <div class="info-row"><span class="key">[LMB]</span> <span class="desc" data-lang="fire">Огонь</span></div>
                 <div class="info-row"><span class="key">[RMB]</span> <span class="desc" data-lang="rockets">Ракеты</span></div>
                 <div class="info-row"><span class="key">[R]</span> <span class="desc" data-lang="ult">УЛЬТА (ЯРОСТЬ)</span></div>
-                <div class="info-row"><span class="key">[1]</span> <span class="desc" data-lang="medkit">Аптечка</span></div>
             </div>
         </div>
-
         <button id="startBtn" class="cyber-button big-btn" data-lang="start_btn">ЗАПУСК СИСТЕМЫ</button>
         <p style="margin-top: 10px; color: #888;" id="savedStageText"></p>
     </div>
 
     <div id="ui">
         <div id="top-dashboard">
-            
             <div class="dash-group">
                 <div class="dash-box level-box">
                     <span class="label" data-lang="stage_label">STAGE</span>
@@ -60,25 +53,16 @@
             </div>
 
             <div class="dash-group">
-                 <div class="dash-box score-box">
+                <div class="dash-box score-box">
                     <span class="label">SCORE</span>
-                    <div class="score-vals">
-                        <span id="currentScore" class="val-text">0</span>
-                    </div>
+                    <div class="score-vals"><span id="currentScore" class="val-text">0</span></div>
                 </div>
                 <div class="loot-container">
-                    <div class="res-slot frame-red">
-                        <span class="icon">✚</span> <span id="medkitVal">0</span>
-                    </div>
-                    <div class="res-slot frame-yellow">
-                        <span class="icon">★</span> <span id="starVal">0</span>
-                    </div>
-                    <div class="res-slot frame-orange">
-                        <span class="icon">▲</span> <span id="missileVal">0</span>
-                    </div>
+                    <div class="res-slot frame-red"><span class="icon">✚</span> <span id="medkitVal">0</span></div>
+                    <div class="res-slot frame-yellow"><span class="icon">★</span> <span id="starVal">0</span></div>
+                    <div class="res-slot frame-orange"><span class="icon">▲</span> <span id="missileVal">0</span></div>
                     <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
-                        <span class="icon">⚡</span> 
-                        <span id="gunTimer">0s</span>
+                        <span class="icon">⚡</span> <span id="gunTimer">0s</span>
                     </div>
                 </div>
             </div>
@@ -98,7 +82,7 @@
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div id="bossNameLabel" class="boss-label cyber-text-small" data-lang="boss_warning">⚠️ WARNING: OMEGA THREAT ⚠️</div>
+             <div id="bossNameLabel" class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
@@ -124,9 +108,7 @@
         <div class="cyber-panel shop-panel">
             <div class="shop-header">
                 <h2 style="color:var(--cyber-yellow)" data-lang="shop_title">ОРУЖЕЙНАЯ</h2>
-                <div class="wallet">
-                    <span class="icon">★</span> <span id="shopStars">0</span>
-                </div>
+                <div class="wallet"><span class="icon">★</span> <span id="shopStars">0</span></div>
             </div>
             <div class="shop-grid" id="shopGrid"></div>
             <button id="closeShopBtn" class="cyber-button" onclick="Shop.close()" data-lang="close_btn">ВЫХОД</button>
