@@ -1,4 +1,4 @@
-/* shop.js - Логика магазина и апгрейдов */
+/* shop.js */
 
 const SHIPS = [
     {
@@ -95,6 +95,7 @@ const Shop = {
         const ship = SHIPS.find(s => s.id === id);
         if (stars >= ship.price) {
             stars -= ship.price;
+            localStorage.setItem('neon_survivor_stars', stars); // Сохраняем баланс
             if(typeof updateUI === 'function') updateUI(); 
             
             const purchased = this.getPurchased();
@@ -109,7 +110,7 @@ const Shop = {
         localStorage.setItem('ns_equipped_ship', id);
         this.render();
         if (typeof player !== 'undefined') {
-            player.applyShipStats();
+            player.applyShipStats(); 
         }
     },
 
