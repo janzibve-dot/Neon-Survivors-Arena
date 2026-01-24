@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neon Survivors</title>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,6 +16,7 @@
     </div>
 
     <button id="langBtn" class="lang-button">RU</button>
+    
     <div id="achievementContainer"></div>
 
     <div id="startScreen" class="screen">
@@ -45,70 +45,61 @@
     <div id="ui">
         <div id="top-dashboard">
             
-            <div class="dash-box level-box">
-                <span class="label" data-lang="stage_label">STAGE</span>
-                <span id="stageValue" class="val-text big-num">1</span>
-                <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
-            </div>
+            <div class="dash-group">
+                <div class="dash-box level-box">
+                    <span class="label" data-lang="stage_label">STAGE</span>
+                    <span id="stageValue" class="val-text big-num">1</span>
+                    <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
+                </div>
 
-            <div class="dash-box time-box">
-                <span class="label" data-lang="boss_timer_label">BOSS IN</span>
-                <span id="levelTimer" class="val-text highlight">60</span>
-            </div>
-
-            <div class="dash-box score-box">
-                <span class="label">SCORE</span>
-                <div class="score-vals">
-                    <span id="currentScore" class="val-text">0</span>
+                <div class="dash-box time-box">
+                    <span class="label" data-lang="boss_timer_label">BOSS IN</span>
+                    <span id="levelTimer" class="val-text highlight">60</span>
                 </div>
             </div>
 
-            <div class="loot-container">
-                <div class="res-slot frame-red">
-                    <span class="icon">✚</span> 
-                    <div class="res-info">
-                        <span id="medkitVal">0</span>
-                        <span class="res-name" data-lang="item_medkit">MEDKIT</span>
+            <div class="dash-group">
+                 <div class="dash-box score-box">
+                    <span class="label">SCORE</span>
+                    <div class="score-vals">
+                        <span id="currentScore" class="val-text">0</span>
                     </div>
                 </div>
-                <div class="res-slot frame-yellow">
-                    <span class="icon">★</span> 
-                    <div class="res-info">
-                        <span id="starVal">0</span>
-                        <span class="res-name" data-lang="item_stars">STARS</span>
+
+                <div class="loot-container">
+                    <div class="res-slot frame-red">
+                        <span class="icon">✚</span> <span id="medkitVal">0</span>
                     </div>
-                </div>
-                <div class="res-slot frame-orange">
-                    <span class="icon">▲</span> 
-                    <div class="res-info">
-                        <span id="missileVal">0</span>
-                        <span class="res-name" data-lang="item_rockets">ROCKETS</span>
+                    <div class="res-slot frame-yellow">
+                        <span class="icon">★</span> <span id="starVal">0</span>
                     </div>
-                </div>
-                <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
-                    <span class="icon">⚡</span> 
-                    <div class="res-info">
+                    <div class="res-slot frame-orange">
+                        <span class="icon">▲</span> <span id="missileVal">0</span>
+                    </div>
+                    <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
+                        <span class="icon">⚡</span> 
                         <span id="gunTimer">0s</span>
-                        <span class="res-name" id="weaponName">WEAPON</span>
                     </div>
                 </div>
             </div>
 
-            <div class="dash-box hp-box">
-                <span class="label">HP / RAGE [R]</span>
-                <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
-                <span id="hpText" class="hp-num">100/100</span>
-                <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
-            </div>
+            <div class="dash-group">
+                <div class="dash-box hp-box">
+                    <span class="label">HP / RAGE [R]</span>
+                    <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
+                    <span id="hpText" class="hp-num">100/100</span>
+                    <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
+                </div>
 
-            <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.open()">
-                <span class="icon">🛒</span>
-                <span class="label" data-lang="shop_btn">SHOP</span>
+                <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.open()">
+                    <span class="icon">🛒</span>
+                    <span class="label" data-lang="shop_btn">SHOP</span>
+                </div>
             </div>
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div id="bossNameLabel" class="boss-label cyber-text-small" data-lang="boss_warning">⚠️ WARNING: OMEGA THREAT ⚠️</div>
+             <div id="bossNameLabel" class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
@@ -118,7 +109,7 @@
     <div id="levelCompleteScreen" class="screen" style="display: none; background: rgba(0,20,0,0.9);">
         <div class="cyber-panel" style="border-color: #00ff00;">
             <h1 class="glitch-text" style="color:#00ff00;" data-lang="level_complete">УРОВЕНЬ ЗАЧИЩЕН</h1>
-            <p class="cyber-subtext" data-lang="next_wave_ready">ЯДРО БОССА ПОЛУЧЕНО. ГИПЕРПРЫЖОК ЗАВЕРШЕН.</p>
+            <p class="cyber-subtext" data-lang="next_wave_ready">ЯДРО БОССА ПОЛУЧЕНО.</p>
             <button id="nextLevelBtn" class="cyber-button" style="color:#00ff00; border-color:#00ff00;" data-lang="next_level_btn">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
         </div>
     </div>
@@ -139,7 +130,7 @@
                 </div>
             </div>
             <div class="shop-grid" id="shopGrid"></div>
-            <button id="closeShopBtn" class="cyber-button" onclick="Shop.close()" data-lang="close_btn">ВЫХОД (ЗАКРЫТЬ)</button>
+            <button id="closeShopBtn" class="cyber-button" onclick="Shop.close()" data-lang="close_btn">ВЫХОД</button>
         </div>
     </div>
 
