@@ -14,7 +14,6 @@
     <div id="damageOverlay"></div>
 
     <button id="langBtn" class="lang-button">RU</button>
-
     <div id="achievementContainer"></div>
 
     <div id="startScreen" class="screen">
@@ -48,8 +47,16 @@
             </div>
 
             <div class="dash-box time-box">
-                <span class="label" data-lang="time_label">NEXT WAVE</span>
+                <span class="label" data-lang="boss_timer_label">BOSS IN</span>
                 <span id="levelTimer" class="val-text highlight">60</span>
+            </div>
+
+            <div class="dash-box score-box">
+                <span class="label">SCORE / BEST</span>
+                <div class="score-vals">
+                    <span id="currentScore" class="val-text">0</span>
+                    <span id="bestScore" class="val-text small-best">HI: 0</span>
+                </div>
             </div>
 
             <div class="loot-container">
@@ -103,9 +110,17 @@
         </div>
     </div>
 
+    <div id="levelCompleteScreen" class="screen" style="display: none; background: rgba(0,20,0,0.9);">
+        <div class="cyber-panel" style="border-color: #00ff00;">
+            <h1 class="glitch-text" style="color:#00ff00;" data-lang="level_complete">УРОВЕНЬ ЗАЧИЩЕН</h1>
+            <p class="cyber-subtext" data-lang="next_wave_ready">СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ. АПТЕЧКИ СБРОШЕНЫ.</p>
+            <button id="nextLevelBtn" class="cyber-button" style="color:#00ff00; border-color:#00ff00;" data-lang="next_level_btn">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+        </div>
+    </div>
+
     <div id="levelUpScreen" class="screen" style="display: none; background: rgba(0,0,0,0.9);">
         <div class="cyber-panel">
-            <h2 style="color:var(--cyber-cyan); margin-bottom: 30px; text-shadow: 0 0 10px var(--cyber-cyan);" data-lang="levelup_title">СИСТЕМА ОБНОВЛЕНА</h2>
+            <h2 style="color:var(--cyber-cyan); margin-bottom: 30px;" data-lang="levelup_title">СИСТЕМА ОБНОВЛЕНА</h2>
             <div id="upgradeContainer" class="upgrade-grid"></div>
         </div>
     </div>
