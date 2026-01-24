@@ -15,15 +15,6 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
-// --- ЗАГРУЗКА СПРАЙТОВ ---
-// Пути должны быть точными. Если на GitHub папка с маленькой буквы, тут тоже.
-const sprites = { 
-    player: new Image(), 
-    boss: new Image() 
-};
-sprites.player.src = 'assets/images/player.png'; 
-sprites.boss.src = 'assets/images/boss.png';
-
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
 const TRANSLATIONS = {
@@ -107,9 +98,8 @@ let hyperspaceTimer = 0;
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
-let isMusicPlaying = false; 
 
-// --- ЗВУКИ ---
+// --- ЗВУКИ (Без музыки) ---
 class SoundManager {
     constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; }
     init() {
@@ -146,8 +136,6 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         src.connect(filter); filter.connect(gain); gain.connect(this.masterGain); src.start(); src.stop(this.ctx.currentTime + duration);
     }
-    
-    toggleMusic() {} 
 
     gameOverTone() {
         if (!this.ctx) return;
@@ -213,8 +201,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    document.getElementById('musicBtn').addEventListener('click', () => sound.toggleMusic());
-
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -434,7 +420,6 @@ class Loot {
                 hyperspaceTimer = 120;
                 return;
             }
-
             if(this.type === 'medkit') { 
                 if (player.hp < player.maxHp - 0.5) { player.heal(player.maxHp * 0.25); floatText.show(this.x, this.y, "+25% " + t("item_medkit"), "#00ff00"); } 
                 else { medkits++; sound.pickup(); floatText.show(this.x, this.y, t("loot_stored"), "#00ffff"); }
@@ -670,50 +655,36 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // ВАЖНО: ОТРИСОВКА. Если картинка есть и загружена - рисуем её.
-        // Если нет (или не загрузилась) - рисуем ВЕКТОРНУЮ фигуру.
-        let drawn = false;
-
-        if (sprites.player.complete && sprites.player.naturalWidth !== 0) {
-            try {
-                // НЕОНОВОЕ СВЕЧЕНИЕ
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#00f3ff';
-                ctx.drawImage(sprites.player, -40, -40, 80, 80);
-                ctx.shadowBlur = 0;
-                drawn = true;
-            } catch(e) { console.log("Ошибка отрисовки спрайта игрока"); }
+        // РИСУЕМ КОРАБЛЬ КОДОМ (БЕЗ КАРТИНОК)
+        if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
+        let strokeCol = this.color; let fillCol = '#050505';
+        if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
+        else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
+        if (this.hitTimer <= 0) {
+            const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
+            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
         }
+        ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
         
-        if (!drawn) {
-            // ФОЛБЭК: Векторный корабль
-            if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
-            let strokeCol = this.color; let fillCol = '#050505';
-            if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
-            else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
-            if (this.hitTimer <= 0) {
-                const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
-                ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
-            }
-            ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
-            
-            if (this.shipType === 'tank') {
-                ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
-            } else if (this.shipType === 'scout') {
-                ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
-            } else {
-                ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
-                ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
-            }
+        if (this.shipType === 'tank') {
+            ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
+        } else if (this.shipType === 'scout') {
+            ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+        } else {
+            // STANDARD
+            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
         }
+
+        if (this.hitTimer <= 0) { ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill(); }
         ctx.restore();
     }
 };
 
-// --- ВРАГИ ---
+// --- ВРАГИ (ВЕКТОРНЫЕ) ---
 class Enemy {
     constructor(boss=false, bossParent=null) {
         this.boss = boss; this.bossParent = bossParent; this.isDefender = !!bossParent; this.shootTimer = Math.random() * 120;
@@ -795,38 +766,20 @@ class Enemy {
         ctx.save(); ctx.translate(this.x, this.y);
 
         if(this.type.includes('boss')) {
-            // ПОВОРОТ: -90 градусов
-            ctx.rotate(this.angle - Math.PI / 2);
-            
-            let drawn = false;
-            // РИСУЕМ КАРТИНКУ БОССА (С ПРОВЕРКОЙ)
-            if (sprites.boss.complete && sprites.boss.naturalWidth !== 0) {
-                try {
-                    // НЕОНОВОЕ СВЕЧЕНИЕ
-                    ctx.shadowBlur = 30;
-                    ctx.shadowColor = this.type === 'tank_boss' ? '#00ff00' : (this.type === 'ninja_boss' ? '#9d00ff' : '#ff0033');
-                    const size = this.r * 2.5; 
-                    ctx.drawImage(sprites.boss, -size/2, -size/2, size, size);
-                    ctx.shadowBlur = 0;
-                    drawn = true;
-                } catch(e) { console.log("Ошибка босса"); }
-            } 
-            
-            if (!drawn) {
-                // ФОЛБЭК: Векторный босс
-                ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
-                if (this.type === 'tank_boss') {
-                    ctx.fillStyle = '#003300';
-                    ctx.fillRect(-60, -60, 120, 120); ctx.strokeRect(-60, -60, 120, 120);
-                    ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
-                } else if (this.type === 'ninja_boss') {
-                    ctx.fillStyle = '#220033';
-                    ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-30, 30); ctx.lineTo(-30, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-                } else {
-                    ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
-                }
+            ctx.rotate(this.angle); 
+            // РИСУЕМ БОССА КОДОМ
+            ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
+            if (this.type === 'tank_boss') {
+                ctx.fillStyle = '#003300';
+                ctx.fillRect(-60, -60, 120, 120); ctx.strokeRect(-60, -60, 120, 120);
+                ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
+            } else if (this.type === 'ninja_boss') {
+                ctx.fillStyle = '#220033';
+                ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-30, 30); ctx.lineTo(-30, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+            } else {
+                ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
             }
         }
         else {
