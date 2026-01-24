@@ -16,7 +16,12 @@ let currentState = STATE.MENU;
 const TOP_BOUND = 100;
 
 // --- ЗАГРУЗКА СПРАЙТОВ ---
-const sprites = { player: new Image(), boss: new Image() };
+// Я оставляю это. Если браузер найдет картинки - он их покажет.
+// Если не найдет - код ниже нарисует треугольник.
+const sprites = { 
+    player: new Image(), 
+    boss: new Image() 
+};
 sprites.player.src = 'assets/images/player.png'; 
 sprites.boss.src = 'assets/images/boss.png';
 
@@ -103,10 +108,11 @@ let hyperspaceTimer = 0;
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
+let isMusicPlaying = false; 
 
 // --- ЗВУКИ ---
 class SoundManager {
-    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; }
+    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; this.musicInterval = null; }
     init() {
         if (!this.ctx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -141,6 +147,12 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         src.connect(filter); filter.connect(gain); gain.connect(this.masterGain); src.start(); src.stop(this.ctx.currentTime + duration);
     }
+    
+    // МУЗЫКА ОТКЛЮЧЕНА (пока не вставлен файл)
+    toggleMusic() {
+        // Здесь можно вставить логику MP3, пока пусто
+    }
+
     gameOverTone() {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
@@ -205,6 +217,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
+    document.getElementById('musicBtn').addEventListener('click', () => sound.toggleMusic());
+
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -283,7 +297,6 @@ class Background {
     }
     draw(isHyperspace) {
         this.stars.forEach(s => {
-            // Эффект гиперпрыжка
             if (isHyperspace) {
                 s.y += s.speed * 50; 
                 ctx.strokeStyle = s.color;
@@ -664,16 +677,16 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // РИСУЕМ КАРТИНКУ, ЕСЛИ ОНА ЗАГРУЖЕНА
+        // РИСУЕМ КАРТИНКУ ИГРОКА
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
-            // ДОБАВЛЕНО СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
+            // СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
             ctx.shadowBlur = 20;
             ctx.shadowColor = '#00f3ff';
-            // УВЕЛИЧЕН РАЗМЕР КОРАБЛЯ ДО 80x80
+            // УВЕЛИЧЕННЫЙ РАЗМЕР
             ctx.drawImage(sprites.player, -40, -40, 80, 80);
-            ctx.shadowBlur = 0; // Сброс
+            ctx.shadowBlur = 0;
         } else {
-            // Запасной вариант (треугольник)
+            // ФОЛБЭК (Треугольник)
             if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
             let strokeCol = this.color; let fillCol = '#050505';
             if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
@@ -1067,7 +1080,6 @@ function killEnemy(e, idx, isLaserKill = false) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
-        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
