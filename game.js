@@ -98,16 +98,15 @@ let stars = 0;
 let laserKills = 0;
 let achievements = [];
 let blackHoleTimer = 0; 
-let hyperspaceTimer = 0; // Таймер анимации гиперпрыжка
+let hyperspaceTimer = 0;
 
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
-let isMusicPlaying = false; // Статус музыки
 
 // --- ЗВУКИ ---
 class SoundManager {
-    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; this.musicInterval = null; }
+    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; }
     init() {
         if (!this.ctx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -142,44 +141,10 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         src.connect(filter); filter.connect(gain); gain.connect(this.masterGain); src.start(); src.stop(this.ctx.currentTime + duration);
     }
-    
-    // --- МУЗЫКА ---
-    toggleMusic() {
-        if (isMusicPlaying) { this.stopMusic(); } else { this.startMusic(); }
-        isMusicPlaying = !isMusicPlaying;
-        document.getElementById('musicBtn').innerText = isMusicPlaying ? "♫ ON" : "♫ OFF";
-    }
-    startMusic() {
-        if (!this.ctx) this.init();
-        let beat = 0;
-        this.musicInterval = setInterval(() => {
-            const time = this.ctx.currentTime;
-            // Bassline (Dark Synth)
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sawtooth';
-            const freq = beat % 4 === 0 ? 65.41 : (beat % 4 === 2 ? 73.42 : 82.41); // C2 - D2 - E2
-            osc.frequency.setValueAtTime(freq, time);
-            osc.frequency.exponentialRampToValueAtTime(freq/2, time + 0.2);
-            
-            // Filter envelope
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(400, time);
-            filter.frequency.exponentialRampToValueAtTime(100, time + 0.2);
-            
-            gain.gain.setValueAtTime(0.3, time);
-            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-            
-            osc.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
-            osc.start(time); osc.stop(time + 0.25);
-            
-            beat++;
-        }, 250); // 240 BPM (быстрый темп)
-    }
-    stopMusic() {
-        if (this.musicInterval) clearInterval(this.musicInterval);
-    }
+    // МУЗЫКА ОТКЛЮЧЕНА (пустая функция)
+    toggleMusic() {}
+    startMusic() {}
+    stopMusic() {}
 
     gameOverTone() {
         if (!this.ctx) return;
@@ -245,9 +210,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // КНОПКА МУЗЫКИ
-    document.getElementById('musicBtn').addEventListener('click', () => sound.toggleMusic());
-
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -328,12 +290,12 @@ class Background {
         this.stars.forEach(s => {
             // Эффект гиперпрыжка
             if (isHyperspace) {
-                s.y += s.speed * 50; // Очень быстро
+                s.y += s.speed * 50; 
                 ctx.strokeStyle = s.color;
                 ctx.lineWidth = s.size;
                 ctx.beginPath();
                 ctx.moveTo(s.x, s.y);
-                ctx.lineTo(s.x, s.y - 100); // Длинный хвост
+                ctx.lineTo(s.x, s.y - 100); 
                 ctx.stroke();
             } else {
                 s.y += s.speed;
@@ -711,6 +673,7 @@ const player = {
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
             ctx.drawImage(sprites.player, -32, -32, 64, 64);
         } else {
+            // ФОЛБЭК ЕСЛИ КАРТИНКИ НЕТ
             if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
             let strokeCol = this.color; let fillCol = '#050505';
             if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
@@ -820,19 +783,19 @@ class Enemy {
         ctx.save(); ctx.translate(this.x, this.y);
 
         if(this.type.includes('boss')) {
-            // ИСПРАВЛЕНИЕ: ПОВОРОТ БОССА (Если картинка смотрит ВНИЗ, то -90 градусов)
+            // ИСПРАВЛЕНИЕ: ПОВОРОТ БОССА
             ctx.rotate(this.angle - Math.PI / 2);
 
+            // ФОЛБЭК: Всегда рисуем картинку, если она есть
             if (sprites.boss && sprites.boss.complete && sprites.boss.naturalWidth > 0) {
-                // НЕОНОВОЕ СВЕЧЕНИЕ ДЛЯ БОССА
+                // НЕОНОВОЕ СВЕЧЕНИЕ
                 ctx.shadowBlur = 30;
                 ctx.shadowColor = this.type === 'tank_boss' ? '#00ff00' : (this.type === 'ninja_boss' ? '#9d00ff' : '#ff0033');
-                
                 const size = this.r * 2.5; 
                 ctx.drawImage(sprites.boss, -size/2, -size/2, size, size);
                 ctx.shadowBlur = 0;
             } else {
-                // ФОЛБЭК ЕСЛИ КАРТИНКА НЕ ГРУЗИТСЯ
+                // Если нет картинки - рисуем фигуры
                 ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
                 if (this.type === 'tank_boss') {
                     ctx.fillStyle = '#003300';
@@ -849,7 +812,7 @@ class Enemy {
             }
         }
         else {
-            ctx.rotate(this.angle); // Обычные враги поворачиваются стандартно
+            ctx.rotate(this.angle); 
             ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
             
             if(this.type === 'kamikaze') {
@@ -878,7 +841,9 @@ function startGame() {
     document.getElementById('levelCompleteScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     
-    // Загрузка сохраненного этапа
+    // Скрываем контейнер босса при старте, чтобы полоска не висела
+    document.getElementById('bossContainer').style.display = 'none';
+    
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
     if (isNaN(currentStage)) currentStage = 1;
@@ -976,21 +941,9 @@ function animate() {
         bg.draw(); return;
     }
     if(currentState===STATE.GAME_OVER) return;
-    if(currentState===STATE.LEVEL_COMPLETE || currentState===STATE.HYPERSPACE) {
+    if(currentState===STATE.LEVEL_COMPLETE) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        
-        // РИСУЕМ ФОН
-        if (currentState === STATE.HYPERSPACE) {
-            bg.draw(true); // Рисуем звезды как линии
-            if (hyperspaceTimer > 0) hyperspaceTimer--;
-            else {
-                currentState = STATE.LEVEL_COMPLETE;
-                document.getElementById('levelCompleteScreen').style.display = 'flex';
-            }
-        } else {
-            bg.draw(false);
-        }
-
+        bg.draw();
         // Разрешаем рисовать игрока и лут на фоне победы
         player.draw();
         lootList.forEach(l=>{l.update(); l.draw();}); 
@@ -1054,9 +1007,7 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-b.x, e.y-b.y) < e.r+5) {
                 if(!b.isLaser) b.active=false;
-                e.hp-=b.dmg; 
-                damageNumbers.push(new DamageNumber(e.x, e.y, b.dmg, false)); // ЦИФРЫ
-                particles.push(new Particle(e.x,e.y,'#fff')); sound.hit();
+                e.hp-=b.dmg; particles.push(new Particle(e.x,e.y,'#fff')); sound.hit();
                 if(e.hp<=0) killEnemy(e,j, b.isLaser);
                 if(!b.isLaser) break;
             }
@@ -1076,7 +1027,6 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-m.x, e.y-m.y) < e.r+10) {
                 e.hp-=100; m.active=false; sound.explode();
-                damageNumbers.push(new DamageNumber(e.x, e.y, 100, true)); // ЦИФРЫ КРИТ
                 for(let k=0;k<10;k++) particles.push(new Particle(m.x,m.y,'#ffaa00'));
                 if(e.hp<=0) killEnemy(e,j);
                 break;
@@ -1095,7 +1045,6 @@ function animate() {
 
     lootList.forEach(l=>{l.update(); l.draw();}); lootList=lootList.filter(l=>l.active);
     particles.forEach(p=>{p.draw();}); particles=particles.filter(p=>p.update());
-    damageNumbers.forEach((d,i) => { if(!d.update()) damageNumbers.splice(i,1); else d.draw(); }); // Рисуем цифры
     floatText.updateAndDraw();
 }
 
@@ -1126,12 +1075,11 @@ function killEnemy(e, idx, isLaserKill = false) {
     } 
     // ЛУТ ДЛЯ БОССА
     else if(e.boss) {
-        lootList.push(new Loot(e.x,e.y,'boss_core', Infinity)); // ЯДРО БОССА (Вечное)
-        lootList.push(new Loot(e.x,e.y,'mega_medkit', Infinity)); 
-        lootList.push(new Loot(e.x+20,e.y+20,'missile_pack', Infinity));
-        lootList.push(new Loot(e.x-20,e.y+20,'machine_gun', Infinity));
+        lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
+        lootList.push(new Loot(e.x+20,e.y+20,'missile_pack'));
+        lootList.push(new Loot(e.x-20,e.y+20,'machine_gun'));
         
-        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*60-30),e.y+(Math.random()*60-30),'star', Infinity));
+        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*60-30),e.y+(Math.random()*60-30),'star'));
         
         bossActive=false; 
         bossDefeated = true; // ПРАВКА: Блокируем спавн босса
@@ -1140,6 +1088,13 @@ function killEnemy(e, idx, isLaserKill = false) {
         document.getElementById('bossContainer').style.display='none';
         
         sound.powerup(); 
-        // Игра ПРОДОЛЖАЕТСЯ, пока не подберешь ЯДРО
+        
+        // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды)
+        setTimeout(() => {
+            if(currentState === STATE.PLAYING) { 
+                currentState = STATE.LEVEL_COMPLETE;
+                document.getElementById('levelCompleteScreen').style.display='flex';
+            }
+        }, 3000);
     }
 }
