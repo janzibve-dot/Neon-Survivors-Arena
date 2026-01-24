@@ -25,9 +25,22 @@ canvas { display: block; cursor: crosshair; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 .scanlines { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; opacity: 0.4; }
+
+/* УРОН И ПРЕДУПРЕЖДЕНИЕ О БОССЕ */
 #damageOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0px var(--cyber-red); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; }
 .critical-health { animation: pulseRed 1s infinite alternate; }
 @keyframes pulseRed { from { box-shadow: inset 0 0 20px var(--cyber-red); opacity: 0.3; } to { box-shadow: inset 0 0 100px var(--cyber-red); opacity: 0.6; } }
+
+#bossWarningOverlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 234, 0, 0); z-index: 45; pointer-events: none;
+    display: flex; justify-content: center; align-items: center;
+}
+.boss-warning-active { animation: flashYellow 0.5s infinite alternate; }
+.warning-text { font-family: var(--font-header); font-size: 40px; color: #000; background: var(--cyber-yellow); padding: 10px 40px; display: none; font-weight: 900; letter-spacing: 5px; box-shadow: 0 0 30px var(--cyber-yellow); transform: rotate(-5deg); }
+.boss-warning-active .warning-text { display: block; }
+
+@keyframes flashYellow { from { background: rgba(255, 234, 0, 0.1); } to { background: rgba(255, 234, 0, 0.4); } }
 
 #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
 #top-dashboard { position: absolute; top: 0; left: 0; right: 0; height: 100px; background: rgba(0,0,0,0.85); border-bottom: 2px solid var(--cyber-cyan); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; pointer-events: auto; gap: 15px; }
