@@ -28,13 +28,11 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// --- ЗВУКОВОЙ ДВИЖОК ---
+// --- ЗВУКИ ---
 class SoundManager {
     constructor() { this.ctx = null; }
     init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
         if (this.ctx.state === 'suspended') { this.ctx.resume(); }
     }
     playTone(freq, type, dur, vol=0.1) {
@@ -91,13 +89,14 @@ window.addEventListener('mouseup', e => { if (e.button === 0) isMouseDown = fals
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 
-// --- ВИЗУАЛ ---
+// --- ВИЗУАЛ И ЭФФЕКТЫ ---
 class Background {
     constructor() {
         this.stars = [];
-        for(let i=0; i<60; i++) this.stars.push({
+        for(let i=0; i<80; i++) this.stars.push({
             x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-            size: Math.random() * 3, speed: Math.random() * 0.5 + 0.1
+            size: Math.random() * 2 + 0.5, speed: Math.random() * 0.5 + 0.1,
+            color: Math.random() > 0.8 ? '#00f3ff' : '#ffffff'
         });
     }
     draw() {
@@ -105,8 +104,9 @@ class Background {
         this.stars.forEach(s => {
             s.y += s.speed;
             if(s.y > canvas.height) s.y = 0;
-            ctx.globalAlpha = 0.2;
-            ctx.fillRect(s.x, s.y, s.size, s.size);
+            ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+            ctx.fillStyle = s.color;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
         });
         ctx.globalAlpha = 1.0;
     }
@@ -117,7 +117,7 @@ class FloatingText {
     constructor() { this.pool = []; }
     show(x, y, text, color) { this.pool.push({x, y, text, color, life: 50}); }
     updateAndDraw() {
-        ctx.font = "bold 16px monospace";
+        ctx.font = "bold 16px 'Share Tech Mono'";
         for (let i = this.pool.length - 1; i >= 0; i--) {
             let t = this.pool[i]; t.y -= 0.5; t.life--;
             ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
@@ -136,27 +136,23 @@ class Particle {
     update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.05; return this.life > 0; }
     draw() { 
         ctx.globalAlpha = this.life; ctx.fillStyle = this.color; 
-        // 3D частица
-        ctx.fillRect(this.x, this.y+2, 4, 4); // Тень
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(this.x, this.y, 4, 4);   // Свет
+        ctx.fillRect(this.x, this.y, 3, 3);
         ctx.globalAlpha = 1.0; 
     }
 }
 let particles = [];
 
-// --- ЛУТ (3D ГЕОМЕТРИЯ) ---
+// --- ЛУТ (ИКОНКИ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
         this.life = (type==='star' || type==='mega_medkit') ? 900 : 600; 
         this.active=true; this.angle=0; this.magnet=false;
-        this.zHeight = 5; // Высота "3D"
+        this.hoverOffset = 0;
     }
     update() {
-        this.life--; this.angle += 0.05;
-        // Эффект парения
-        this.zOffset = Math.sin(frameCount * 0.1) * 3; 
+        this.life--; 
+        this.hoverOffset = Math.sin(frameCount * 0.1) * 3; // Анимация парения
 
         if(Math.hypot(player.x - this.x, player.y - this.y) < 150) this.magnet = true;
         if(this.magnet) {
@@ -166,10 +162,7 @@ class Loot {
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; sound.pickup();
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"MEDKIT","#ff0033"); }
-            else if(this.type === 'mega_medkit') { 
-                player.hp = player.maxHp; sound.powerup();
-                floatText.show(this.x,this.y,"FULL RESTORE","#00ff00"); 
-            }
+            else if(this.type === 'mega_medkit') { player.hp = player.maxHp; sound.powerup(); floatText.show(this.x,this.y,"FULL RESTORE","#00ff00"); }
             else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"STAR","#ffea00"); }
             else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"MISSILE","#ffaa00"); }
             else if(this.type === 'xp') player.gainXp(10);
@@ -178,76 +171,59 @@ class Loot {
         if(this.life<=0) this.active = false;
     }
     draw() {
-        ctx.save(); ctx.translate(this.x, this.y + this.zOffset); 
+        ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
-        // 3D ЭФФЕКТ: Рисуем "толщину" затемненным цветом, затем "крышку"
         if(this.type === 'medkit') {
-            // Тень (Бок)
-            ctx.fillStyle = '#990000';
-            ctx.fillRect(-8, -8 + this.zHeight, 16, 16);
-            // Верх
-            ctx.shadowColor = '#ff0033'; ctx.shadowBlur = 10;
-            ctx.fillStyle = '#ff0033'; 
-            ctx.fillRect(-8, -8, 16, 16);
-            // Крест
-            ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4); 
+            // Белый кейс с красным крестом
+            ctx.fillStyle = '#eee';
+            ctx.beginPath(); ctx.roundRect(-10, -8, 20, 16, 2); ctx.fill();
+            // Красный крест
+            ctx.fillStyle = '#ff0033';
+            ctx.fillRect(-2, -5, 4, 10); ctx.fillRect(-5, -2, 10, 4);
+            // Ручка
+            ctx.strokeStyle = '#ccc'; ctx.lineWidth=2;
+            ctx.beginPath(); ctx.moveTo(-4,-8); ctx.lineTo(-4,-10); ctx.lineTo(4,-10); ctx.lineTo(4,-8); ctx.stroke();
         } 
         else if (this.type === 'mega_medkit') {
-            // Тень
-            ctx.fillStyle = '#005500';
-            ctx.fillRect(-12, -4 + this.zHeight, 24, 8);
-            ctx.fillRect(-4, -12 + this.zHeight, 8, 24);
-            // Верх
-            ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 15;
-            ctx.fillStyle = '#00ff00'; 
-            ctx.fillRect(-12,-4,24,8); ctx.fillRect(-4,-12,8,24);
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-            ctx.strokeRect(-12,-4,24,8); ctx.strokeRect(-4,-12,8,24);
+            // Большой зеленый контейнер
+            ctx.shadowBlur = 10; ctx.shadowColor = '#00ff00';
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath(); ctx.roundRect(-12, -12, 24, 24, 4); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = "bold 16px Arial"; ctx.fillText("H", -6, 6);
         }
         else if(this.type === 'star') {
-            ctx.rotate(this.angle);
-            // Тень
-            ctx.fillStyle = '#aa8800';
-            this.drawStarPath(this.zHeight);
-            // Верх
-            ctx.shadowColor = '#ffea00'; ctx.shadowBlur = 10;
-            ctx.fillStyle = '#ffea00'; 
-            this.drawStarPath(0);
+            // Золотая монета
+            ctx.shadowBlur = 10; ctx.shadowColor = '#ffea00';
+            ctx.fillStyle = '#ffea00';
+            ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#b8860b';
+            ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
         } 
         else if(this.type === 'missile') {
-            ctx.rotate(this.angle);
-            // Тень
-            ctx.fillStyle = '#aa6600';
-            this.drawTrianglePath(this.zHeight);
-            // Верх
-            ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 10;
+            // Ракета
+            ctx.rotate(-Math.PI/4);
+            ctx.fillStyle = '#ccc';
+            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(3,3); ctx.lineTo(-3,3); ctx.fill(); // Тело
             ctx.fillStyle = '#ffaa00';
-            this.drawTrianglePath(0);
+            ctx.beginPath(); ctx.moveTo(0,3); ctx.lineTo(5,8); ctx.lineTo(-5,8); ctx.fill(); // Хвост
         } else {
-            // XP
-            ctx.fillStyle = '#005500'; ctx.fillRect(-4, -4+4, 8, 8);
-            ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5;
+            // XP (Светящийся куб)
+            ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8);
         }
         ctx.restore();
-    }
-    
-    drawStarPath(offsetY) {
-        ctx.beginPath(); ctx.moveTo(0,-10+offsetY); ctx.lineTo(8,0+offsetY); ctx.lineTo(0,10+offsetY); ctx.lineTo(-8,0+offsetY); ctx.fill();
-    }
-    drawTrianglePath(offsetY) {
-        ctx.beginPath(); ctx.moveTo(0,-10+offsetY); ctx.lineTo(8,8+offsetY); ctx.lineTo(-8,8+offsetY); ctx.fill();
     }
 }
 let lootList = [];
 
 class Bullet {
-    constructor(x, y, a, dmg) { this.x=x; this.y=y; this.vx=Math.cos(a)*15; this.vy=Math.sin(a)*15; this.dmg=dmg; this.active=true; }
+    constructor(x, y, a, dmg) { this.x=x; this.y=y; this.vx=Math.cos(a)*18; this.vy=Math.sin(a)*18; this.dmg=dmg; this.active=true; }
     update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.active=false; }
     draw() {
-        ctx.shadowBlur = 5; ctx.shadowColor = '#00f3ff';
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; 
+        ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx*0.5, this.y-this.vy*0.5); ctx.stroke();
         ctx.shadowBlur = 0;
     }
 }
@@ -263,28 +239,26 @@ class Missile {
             const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             let diff = desired - this.angle;
             while(diff < -Math.PI) diff+=Math.PI*2; while(diff > Math.PI) diff-=Math.PI*2;
-            this.angle += diff*0.1; this.speed += 0.2;
+            this.angle += diff*0.1; this.speed += 0.3;
         } else { this.target = findNearestEnemy(this.x, this.y); }
         this.x += Math.cos(this.angle)*this.speed; this.y += Math.sin(this.angle)*this.speed;
-        if(frameCount%3===0) particles.push(new Particle(this.x,this.y,'#ffaa00'));
+        if(frameCount%2===0) particles.push(new Particle(this.x,this.y,'#ff5500'));
     }
     draw() {
         ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-        // 3D Ракета
-        ctx.fillStyle = '#884400'; // Тень
-        ctx.beginPath(); ctx.moveTo(10,3); ctx.lineTo(-5,8); ctx.lineTo(-5,-2); ctx.fill();
-        
-        ctx.shadowColor='#ffaa00'; ctx.shadowBlur=10;
-        ctx.fillStyle = '#ffaa00'; // Корпус
-        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-5,5); ctx.lineTo(-5,-5); ctx.fill();
+        // Рисуем ракету
+        ctx.fillStyle = '#888';
+        ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(-4,4); ctx.lineTo(-4,-4); ctx.fill();
+        ctx.fillStyle = '#ffaa00'; // Огонь
+        ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(-8,3); ctx.lineTo(-8,-3); ctx.fill();
         ctx.restore();
     }
 }
 let missiles = [];
 
-// --- ИГРОК (3D) ---
+// --- ИГРОК (КОСМИЧЕСКИЙ КОРАБЛЬ) ---
 const player = {
-    x: 0, y: 0, radius: 15, color: '#00f3ff', darkColor: '#008b8b', speed: 5, angle: 0,
+    x: 0, y: 0, radius: 15, color: '#00f3ff', speed: 5, angle: 0,
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
     dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0,
     reset() {
@@ -297,8 +271,8 @@ const player = {
         if(keys['KeyS'] || keys['ArrowDown']) this.y += this.speed;
         if(keys['KeyA'] || keys['ArrowLeft']) this.x -= this.speed;
         if(keys['KeyD'] || keys['ArrowRight']) this.x += this.speed;
-        this.x = Math.max(15, Math.min(canvas.width-15, this.x));
-        this.y = Math.max(15, Math.min(canvas.height-15, this.y));
+        this.x = Math.max(20, Math.min(canvas.width-20, this.x));
+        this.y = Math.max(20, Math.min(canvas.height-20, this.y));
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
         
         if(this.cooldown>0) this.cooldown--;
@@ -333,56 +307,62 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // Тень/Бок (3D эффект)
-        ctx.fillStyle = this.darkColor;
-        ctx.beginPath(); ctx.moveTo(15, 5); ctx.lineTo(-10, 15); ctx.lineTo(-5, 5); ctx.lineTo(-10, -7); ctx.fill();
+        // Пламя двигателя
+        const flicker = Math.random() * 5;
+        ctx.fillStyle = '#00ffff';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
+        ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-20 - flicker, 5); ctx.lineTo(-20 - flicker, -5); ctx.fill();
+        ctx.shadowBlur = 0;
 
-        // Верх (Свечение)
-        ctx.shadowBlur = 15; ctx.shadowColor = this.color; ctx.fillStyle = this.color;
-        ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
+        // Корпус корабля (Сложная форма)
+        ctx.fillStyle = '#222';
+        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
         
+        ctx.beginPath();
+        ctx.moveTo(15, 0);  // Нос
+        ctx.lineTo(-5, 12); // Правое крыло (низ)
+        ctx.lineTo(-5, 5);  // Правый стык
+        ctx.lineTo(-15, 8); // Правый двигатель
+        ctx.lineTo(-10, 0); // Центр зад
+        ctx.lineTo(-15, -8);// Левый двигатель
+        ctx.lineTo(-5, -5); // Левый стык
+        ctx.lineTo(-5, -12);// Левое крыло (низ)
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // Кабина пилота
+        ctx.fillStyle = '#ccffff';
+        ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+
         ctx.restore();
     }
 };
 
-// --- ВРАГИ (3 ТИПА + БОСС, ВСЕ В 3D) ---
+// --- ВРАГИ (ДЕТАЛИЗИРОВАННЫЕ) ---
 class Enemy {
     constructor(boss=false) {
         this.boss = boss;
-        this.zHeight = 8; // Высота врага
-
         if(boss) {
-            this.x=canvas.width/2; this.y=-100; this.hp=600; this.maxHp=600; this.r=60; this.speed=1; 
-            this.color='#ff0033'; this.darkColor='#880000';
-            this.type = 'boss';
+            this.x=canvas.width/2; this.y=-100; this.hp=600; this.maxHp=600; this.r=70; this.speed=1; 
+            this.color='#ff0033'; this.type='boss'; this.rotation=0;
             document.getElementById('bossContainer').style.display='block';
         } else {
-            // ГЕНЕРАЦИЯ ТИПА ВРАГА
             const rand = Math.random();
             const edge = Math.floor(Math.random()*4);
-            
-            // Позиция спавна
             if(edge==0){this.x=Math.random()*canvas.width;this.y=-30;}
             else if(edge==1){this.x=canvas.width+30;this.y=Math.random()*canvas.height;}
             else if(edge==2){this.x=Math.random()*canvas.width;this.y=canvas.height+30;}
             else{this.x=-30;this.y=Math.random()*canvas.height;}
 
-            // Типы
             if(rand < 0.2) { 
-                // ТАНК (Медленный, жирный, Квадрат)
-                this.type = 'tank'; this.hp = 40 + player.level*8; this.maxHp = this.hp;
-                this.speed = 1.0; this.r = 20; 
-                this.color = '#ff00ff'; this.darkColor = '#880088'; // Фиолетовый
+                this.type = 'tank'; this.hp = 50 + player.level*8; this.maxHp = this.hp;
+                this.speed = 1.0; this.r = 25; this.color = '#ff00ff';
             } else if (rand < 0.5) {
-                // БЕГУН (Быстрый, слабый, Треугольник)
-                this.type = 'runner'; this.hp = 10 + player.level*3; this.maxHp = this.hp;
-                this.speed = 3.5; this.r = 12;
-                this.color = '#ffea00'; this.darkColor = '#aa8800'; // Желтый
+                this.type = 'runner'; this.hp = 15 + player.level*3; this.maxHp = this.hp;
+                this.speed = 3.5; this.r = 12; this.color = '#ffea00';
             } else {
-                // ОБЫЧНЫЙ (Средний, Шестиугольник)
-                this.type = 'normal'; this.hp = 20 + player.level*5; this.maxHp = this.hp;
-                this.speed = 2.0; this.r = 15;
-                this.color = '#00ff00'; this.darkColor = '#005500'; // Зеленый
+                this.type = 'normal'; this.hp = 30 + player.level*5; this.maxHp = this.hp;
+                this.speed = 2.0; this.r = 18; this.color = '#00ff00';
             }
             this.damage = 10;
         }
@@ -390,56 +370,53 @@ class Enemy {
     update() {
         const a = Math.atan2(player.y-this.y, player.x-this.x);
         this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
-        
-        // Поворот для бегунов (чтобы смотрели на игрока)
-        if(this.type === 'runner') this.angle = a;
+        if(this.type==='runner') this.angle = a;
+        if(this.type==='boss') this.rotation += 0.02;
     }
     draw() {
-        ctx.save(); 
+        ctx.save(); ctx.translate(this.x, this.y);
         ctx.shadowBlur=10; ctx.shadowColor=this.color;
         
         if(this.boss) { 
-            // Босс (3D Куб)
-            ctx.fillStyle = this.darkColor; 
-            ctx.fillRect(this.x-this.r, this.y-this.r + 10, this.r*2, this.r*2); // Тень
-            
+            ctx.rotate(this.rotation);
+            // Ядро
+            ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill();
+            // Броня (4 пластины)
             ctx.fillStyle = this.color;
-            ctx.fillRect(this.x-this.r, this.y-this.r, this.r*2, this.r*2); // Лицо
-            ctx.strokeStyle='#fff'; ctx.lineWidth=3;
-            ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
+            for(let i=0; i<4; i++) {
+                ctx.rotate(Math.PI/2);
+                ctx.fillRect(-10, -60, 20, 20);
+                ctx.strokeStyle='#fff'; ctx.strokeRect(-10, -60, 20, 20);
+                // Соединения
+                ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(0,-60); ctx.stroke();
+            }
         }
         else if(this.type === 'tank') {
-            // Танк (Ромб)
-            ctx.translate(this.x, this.y);
-            ctx.rotate(Math.PI/4); // Поворот на 45 град
-            ctx.fillStyle = this.darkColor;
-            ctx.fillRect(-this.r, -this.r + 5, this.r*2, this.r*2);
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-this.r, -this.r, this.r*2, this.r*2);
+            // Танк: Восьмиугольник с пушкой
+            ctx.fillStyle = '#440044';
+            ctx.beginPath(); 
+            for(let i=0;i<8;i++) ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4));
+            ctx.fill();
+            ctx.strokeStyle = this.color; ctx.lineWidth=3; ctx.stroke();
+            // Пушка
+            ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
         }
         else if(this.type === 'runner') {
-            // Бегун (Треугольник)
-            ctx.translate(this.x, this.y);
+            // Бегун: Истребитель
             ctx.rotate(this.angle);
-            ctx.fillStyle = this.darkColor;
-            ctx.beginPath(); ctx.moveTo(this.r, 3); ctx.lineTo(-this.r, this.r+3); ctx.lineTo(-this.r, -this.r+3); ctx.fill();
             ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.moveTo(this.r, 0); ctx.lineTo(-this.r, this.r); ctx.lineTo(-this.r, -this.r); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
         }
         else { 
-            // Обычный (Шестиугольник)
-            ctx.fillStyle = this.darkColor;
-            this.drawHex(this.x, this.y + 5);
-            ctx.fillStyle = this.color;
-            this.drawHex(this.x, this.y);
+            // Обычный: Дрон с глазом
+            ctx.fillStyle = '#003300';
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = this.color; ctx.lineWidth=2; ctx.stroke();
+            // Глаз
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
         }
         ctx.restore();
-    }
-    
-    drawHex(x, y) {
-        ctx.beginPath(); 
-        for(let i=0;i<6;i++) ctx.lineTo(x+this.r*Math.cos(i*Math.PI/3), y+this.r*Math.sin(i*Math.PI/3)); 
-        ctx.fill(); 
     }
 }
 let enemies = [];
@@ -471,14 +448,7 @@ function showUpgrades() {
     const opts = [
         {n:"УРОН", d:"+10 Dmg", f:()=>{player.dmg+=10;}},
         {n:"СКОРОСТЬ", d:"Fire Rate", f:()=>{player.fireRate=Math.max(5,player.fireRate-2);}},
-        {
-            n:"HP BOOST", 
-            d:"+20 MaxHP & FULL HEAL", 
-            f:()=>{ 
-                player.maxHp+=20; 
-                player.hp = player.maxHp; 
-            }
-        },
+        {n:"HP BOOST", d:"+20 HP & Heal", f:()=>{ player.maxHp+=20; player.hp = player.maxHp; }},
         {n:"РАКЕТЫ", d:"+3 Ammo", f:()=>{player.missiles+=3;}}
     ];
     opts.sort(()=>Math.random()-0.5).slice(0,3).forEach(u=>{
