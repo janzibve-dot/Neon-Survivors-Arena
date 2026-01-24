@@ -30,6 +30,7 @@
                 <div class="info-row"><span class="key">[MOUSE]</span> <span class="desc" data-lang="aim">Прицеливание</span></div>
                 <div class="info-row"><span class="key">[LMB]</span> <span class="desc" data-lang="fire">Огонь</span></div>
                 <div class="info-row"><span class="key">[RMB]</span> <span class="desc" data-lang="rockets">Ракеты</span></div>
+                <div class="info-row"><span class="key">[R]</span> <span class="desc" data-lang="ult">УЛЬТА (ЯРОСТЬ)</span></div>
                 <div class="info-row"><span class="key">[1]</span> <span class="desc" data-lang="medkit">Аптечка</span></div>
             </div>
         </div>
@@ -91,9 +92,10 @@
             </div>
 
             <div class="dash-box hp-box">
-                <span class="label">SHIELD / HP</span>
+                <span class="label">HP / RAGE [R]</span>
                 <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
                 <span id="hpText" class="hp-num">100/100</span>
+                <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
             </div>
 
             <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.toggle()">
@@ -103,7 +105,7 @@
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div class="boss-label cyber-text-small" data-lang="boss_warning">⚠️ WARNING: OMEGA THREAT ⚠️</div>
+             <div id="bossNameLabel" class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
