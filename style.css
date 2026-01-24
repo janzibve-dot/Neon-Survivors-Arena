@@ -32,7 +32,7 @@ canvas { display: block; cursor: crosshair; }
 
 #top-dashboard {
     position: absolute; top: 0; left: 0; right: 0; height: 100px;
-    background: rgba(0,0,0,0.5); /* Затемнение фона под HUD */
+    background: rgba(0,0,0,0.5); 
     border-bottom: 2px solid var(--cyber-cyan);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 20px; pointer-events: auto; gap: 15px;
@@ -55,7 +55,6 @@ canvas { display: block; cursor: crosshair; }
 .time-box { min-width: 80px; border-color: #fff; }
 .highlight { font-size: 24px; color: var(--cyber-yellow); }
 
-/* ЛУТ КОНТЕЙНЕР */
 .loot-container { display: flex; gap: 15px; }
 .res-slot {
     display: flex; align-items: center; gap: 10px; padding: 5px 15px; border-radius: 8px;
@@ -63,7 +62,6 @@ canvas { display: block; cursor: crosshair; }
 }
 .res-slot:hover { transform: scale(1.05); }
 
-/* ЦВЕТНЫЕ РАМКИ */
 .frame-red { border-color: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red), inset 0 0 10px rgba(255, 0, 51, 0.2); }
 .frame-yellow { border-color: var(--cyber-yellow); box-shadow: 0 0 10px var(--cyber-yellow), inset 0 0 10px rgba(255, 234, 0, 0.2); }
 .frame-orange { border-color: var(--cyber-orange); box-shadow: 0 0 10px var(--cyber-orange), inset 0 0 10px rgba(255, 170, 0, 0.2); }
@@ -81,7 +79,6 @@ canvas { display: block; cursor: crosshair; }
 .res-info span:first-child { font-weight: 900; font-size: 20px; color: #fff; }
 .res-name { font-size: 9px; color: #aaa; font-weight: bold; letter-spacing: 1px; }
 
-/* HP */
 .hp-box { min-width: 200px; border-color: var(--cyber-red); box-shadow: 0 0 15px var(--cyber-red); }
 .hp-bar-thick { width: 100%; height: 20px; background: #330000; border: 1px solid #550000; position: relative; margin-bottom: 5px; box-shadow: inset 0 0 10px #000; }
 .hp-bar-thick .fill { height: 100%; background: linear-gradient(90deg, #ff0000, #ff5555); width: 100%; transition: width 0.2s; box-shadow: 0 0 15px var(--cyber-red); }
@@ -101,8 +98,14 @@ canvas { display: block; cursor: crosshair; }
 
 .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #020205; z-index: 50; }
 .cyber-panel { border: 1px solid var(--cyber-cyan); background: rgba(5, 5, 10, 0.95); padding: 30px; text-align: center; }
-.upgrade-card { background: #111; border: 1px solid #333; padding: 15px; margin: 10px; width: 180px; cursor: pointer; transition: 0.2s; }
-.upgrade-card:hover { border-color: var(--cyber-yellow); transform: translateY(-5px); }
+
+/* КАРТОЧКИ УЛУЧШЕНИЙ */
+.upgrade-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+.upgrade-card { background: #111; border: 1px solid #333; padding: 15px; width: 180px; cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px #000; }
+.upgrade-card:hover { border-color: var(--cyber-yellow); transform: translateY(-5px); box-shadow: 0 0 20px var(--cyber-yellow); }
+.upgrade-card h3 { color: var(--cyber-cyan); margin: 0 0 10px 0; font-size: 18px; }
+.upgrade-card p { color: #ccc; font-size: 14px; }
+
 .alert-text { color: var(--cyber-red); font-size: 3rem; margin: 0; }
 
 .retro-sign { font-family: var(--font-header); font-size: 8rem; font-weight: 900; color: rgba(255, 255, 255, 0.8); text-shadow: 0 0 20px var(--cyber-red), 0 0 40px var(--cyber-red); margin-bottom: 10px; letter-spacing: 10px; z-index: 60; text-align: center; }
@@ -121,4 +124,5 @@ canvas { display: block; cursor: crosshair; }
 .desc { color: #ccc; }
 .big-btn { font-size: 24px; padding: 20px 60px; background: var(--cyber-red); color: #fff; border: 2px solid #fff; box-shadow: 0 0 15px var(--cyber-red); cursor: pointer; }
 .big-btn:hover { background: #fff; color: var(--cyber-red); box-shadow: 0 0 40px var(--cyber-red); }
-.cyber-button { padding: 15px 30px; font-family: var(--font-header); font-weight: bold; border: none; cursor: pointer; text-transform: uppercase; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); margin-top: 20px; }
+.cyber-button { padding: 15px 30px; font-family: var(--font-header); font-weight: bold; border: none; cursor: pointer; text-transform: uppercase; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); margin-top: 20px; background: #333; color: #fff; }
+.cyber-button:hover { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
