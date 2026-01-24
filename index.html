@@ -99,7 +99,7 @@
                 <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
             </div>
 
-            <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.toggle()">
+            <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.open()">
                 <span class="icon">🛒</span>
                 <span class="label" data-lang="shop_btn">SHOP</span>
             </div>
@@ -130,9 +130,14 @@
 
     <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.95);">
         <div class="cyber-panel shop-panel">
-            <h2 style="color:var(--cyber-yellow)" data-lang="shop_title">ОРУЖЕЙНАЯ</h2>
-            <p data-lang="shop_desc">Система улучшений временно недоступна...</p>
-            <div class="shop-grid"></div>
+            <div class="shop-header">
+                <h2 style="color:var(--cyber-yellow)" data-lang="shop_title">ОРУЖЕЙНАЯ</h2>
+                <div class="wallet">
+                    <span class="icon">★</span> <span id="shopStars">0</span>
+                </div>
+            </div>
+            <div class="shop-grid" id="shopGrid">
+                </div>
             <button id="closeShopBtn" class="cyber-button" data-lang="close_btn">ЗАКРЫТЬ</button>
         </div>
     </div>
@@ -145,7 +150,6 @@
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
         <h1 class="alert-text" data-lang="gameover_title">КРИТИЧЕСКИЙ СБОЙ</h1>
         <p class="cyber-subtext"><span data-lang="score_text">ИТОГОВЫЙ СЧЕТ:</span> <span id="finalScore" class="cyber-highlight">0</span></p>
-        <p style="font-size: 12px; color: #888;">Вы возродитесь на текущем этапе</p>
         <button class="cyber-button restart-btn" data-lang="restart_btn">ПЕРЕЗАГРУЗКА</button>
     </div>
 
