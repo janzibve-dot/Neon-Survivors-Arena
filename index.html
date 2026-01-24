@@ -36,14 +36,15 @@
         </div>
 
         <button id="startBtn" class="cyber-button big-btn" data-lang="start_btn">ЗАПУСК СИСТЕМЫ</button>
+        <p style="margin-top: 10px; color: #888;" id="savedStageText"></p>
     </div>
 
     <div id="ui">
         <div id="top-dashboard">
             
             <div class="dash-box level-box">
-                <span class="label" data-lang="level_label">LEVEL</span>
-                <span id="levelValue" class="val-text big-num">1</span>
+                <span class="label" data-lang="stage_label">STAGE</span>
+                <span id="stageValue" class="val-text big-num">1</span>
                 <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
             </div>
 
@@ -105,7 +106,7 @@
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div id="bossNameLabel" class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
+             <div id="bossNameLabel" class="boss-label cyber-text-small" data-lang="boss_warning">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
@@ -115,7 +116,7 @@
     <div id="levelCompleteScreen" class="screen" style="display: none; background: rgba(0,20,0,0.9);">
         <div class="cyber-panel" style="border-color: #00ff00;">
             <h1 class="glitch-text" style="color:#00ff00;" data-lang="level_complete">УРОВЕНЬ ЗАЧИЩЕН</h1>
-            <p class="cyber-subtext" data-lang="next_wave_ready">СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ. АПТЕЧКИ СБРОШЕНЫ.</p>
+            <p class="cyber-subtext" data-lang="next_wave_ready">СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ. ПРОГРЕСС СОХРАНЕН.</p>
             <button id="nextLevelBtn" class="cyber-button" style="color:#00ff00; border-color:#00ff00;" data-lang="next_level_btn">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
         </div>
     </div>
@@ -144,6 +145,7 @@
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
         <h1 class="alert-text" data-lang="gameover_title">КРИТИЧЕСКИЙ СБОЙ</h1>
         <p class="cyber-subtext"><span data-lang="score_text">ИТОГОВЫЙ СЧЕТ:</span> <span id="finalScore" class="cyber-highlight">0</span></p>
+        <p style="font-size: 12px; color: #888;">Вы возродитесь на текущем этапе</p>
         <button class="cyber-button restart-btn" data-lang="restart_btn">ПЕРЕЗАГРУЗКА</button>
     </div>
 
