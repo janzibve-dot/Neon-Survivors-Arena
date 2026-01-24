@@ -15,19 +15,81 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
+// --- ЛОКАЛИЗАЦИЯ ---
+let currentLang = 'ru';
+const TRANSLATIONS = {
+    ru: {
+        controls_title: ":: УПРАВЛЕНИЕ СИСТЕМОЙ ::",
+        move: "Движение", aim: "Прицеливание", fire: "Огонь", rockets: "Ракеты", medkit: "Аптечка",
+        start_btn: "ЗАПУСК СИСТЕМЫ",
+        level_label: "УРОВЕНЬ", time_label: "ДО ВОЛНЫ",
+        item_medkit: "АПТЕЧКА", item_stars: "ЗВЕЗДЫ", item_rockets: "РАКЕТЫ",
+        shop_btn: "МАГАЗИН",
+        boss_warning: "⚠️ ВНИМАНИЕ: ОМЕГА УГРОЗА ⚠️",
+        levelup_title: "СИСТЕМА ОБНОВЛЕНА",
+        shop_title: "ОРУЖЕЙНАЯ", shop_desc: "Система улучшений временно недоступна...", close_btn: "ЗАКРЫТЬ",
+        pause_title: "ПАУЗА", resume_btn: "ПРОДОЛЖИТЬ",
+        gameover_title: "КРИТИЧЕСКИЙ СБОЙ", score_text: "ИТОГОВЫЙ СЧЕТ:", restart_btn: "ПЕРЕЗАГРУЗКА",
+        ach_sniper: "СНАЙПЕР", ach_sniper_desc: "50 убийств лазером",
+        ach_survivor: "ВЫЖИВШИЙ", ach_survivor_desc: "Пережить Черную Дыру",
+        weapon_gun: "ПУЛЕМЕТ", weapon_laser: "ЛАЗЕР", weapon_shotgun: "ДРОБОВИК",
+        loot_stored: "В ЗАПАС", loot_healed: "ЛЕЧЕНИЕ", loot_rockets: "РАКЕТЫ!", loot_laser: "ЛАЗЕР!", loot_minigun: "ПУЛЕМЕТ!", loot_shotgun: "ДРОБОВИК!"
+    },
+    en: {
+        controls_title: ":: SYSTEM CONTROLS ::",
+        move: "Movement", aim: "Aiming", fire: "Fire", rockets: "Rockets", medkit: "Medkit",
+        start_btn: "SYSTEM START",
+        level_label: "LEVEL", time_label: "WAVE TIMER",
+        item_medkit: "MEDKIT", item_stars: "STARS", item_rockets: "ROCKETS",
+        shop_btn: "SHOP",
+        boss_warning: "⚠️ WARNING: OMEGA THREAT ⚠️",
+        levelup_title: "SYSTEM UPGRADE",
+        shop_title: "ARMORY", shop_desc: "Upgrade system offline...", close_btn: "CLOSE",
+        pause_title: "PAUSE", resume_btn: "RESUME",
+        gameover_title: "CRITICAL FAILURE", score_text: "FINAL SCORE:", restart_btn: "REBOOT",
+        ach_sniper: "SNIPER", ach_sniper_desc: "50 Laser Kills",
+        ach_survivor: "SURVIVOR", ach_survivor_desc: "Survive a Black Hole",
+        weapon_gun: "MINIGUN", weapon_laser: "LASER", weapon_shotgun: "SHOTGUN",
+        loot_stored: "STORED", loot_healed: "HEALED", loot_rockets: "ROCKETS!", loot_laser: "LASER!", loot_minigun: "MINIGUN!", loot_shotgun: "SHOTGUN!"
+    }
+};
+
+function t(key) {
+    return TRANSLATIONS[currentLang][key] || key;
+}
+
+function updateTexts() {
+    document.querySelectorAll('[data-lang]').forEach(el => {
+        const key = el.getAttribute('data-lang');
+        if(TRANSLATIONS[currentLang][key]) el.innerText = TRANSLATIONS[currentLang][key];
+    });
+    document.getElementById('langBtn').innerText = currentLang.toUpperCase();
+}
+
+function toggleLanguage() {
+    currentLang = currentLang === 'ru' ? 'en' : 'ru';
+    updateTexts();
+}
+
+// Глобальные переменные
 let frameCount = 0;
-let scoreTime = 0;
+let scoreTime = 0; // Общее время выживания
+let levelTime = 60 * 60; // Таймер уровня (60 сек * 60 fps)
 let killScore = 0;
 let spawnInterval = 90;
 const MAX_ENEMIES = 50; 
 let medkits = 0;
 let stars = 0;
 
+// Статистика для ачивок
+let laserKills = 0;
+let achievements = [];
+
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// --- НОВЫЙ "ПРИЯТНЫЙ" ЗВУКОВОЙ ДВИЖОК ---
+// --- ЗВУКОВОЙ ДВИЖОК ---
 class SoundManager {
     constructor() {
         this.ctx = null;
@@ -109,6 +171,22 @@ class SoundManager {
         src.stop(this.ctx.currentTime + duration);
     }
 
+    // Грустный звук проигрыша (выключение питания)
+    gameOverTone() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 1.5);
+        gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 1.5);
+    }
+
     // --- ЗВУКОВЫЕ ПРЕСЕТЫ ---
     shoot() { this.playTone('shoot', 600, 'triangle', 0.15, 0.1, 100); }
     machineGun() { this.playTone('machine', 200, 'triangle', 0.1, 0.08, 50); } 
@@ -158,15 +236,24 @@ const sound = new SoundManager();
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener("DOMContentLoaded", () => {
+    updateTexts(); // Установить русский язык
+
     const startBtn = document.getElementById('startBtn');
     if(startBtn) startBtn.addEventListener('click', () => { sound.init(); startGame(); });
+    
     const resumeBtn = document.getElementById('resumeBtn');
     if(resumeBtn) resumeBtn.addEventListener('click', togglePause);
+
+    // Кнопка перезагрузки в окне смерти
     const restartBtns = document.querySelectorAll('#gameOverScreen .cyber-button');
     restartBtns.forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('gameOverScreen').style.display = 'none';
         startGame();
     }));
+
+    // Кнопка языка
+    document.getElementById('langBtn').addEventListener('click', toggleLanguage);
+
     animate();
 });
 
@@ -187,6 +274,31 @@ window.addEventListener('mousedown', e => {
 });
 window.addEventListener('mouseup', e => { if (e.button === 0) isMouseDown = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());
+
+// --- СИСТЕМА ДОСТИЖЕНИЙ ---
+function unlockAchievement(id, titleKey, descKey) {
+    if(achievements.includes(id)) return;
+    achievements.push(id);
+    
+    const container = document.getElementById('achievementContainer');
+    const popup = document.createElement('div');
+    popup.className = 'achievement-popup';
+    popup.innerHTML = `
+        <div class="ach-icon">🏆</div>
+        <div class="ach-text">
+            <h4>${t(titleKey)}</h4>
+            <p>${t(descKey)}</p>
+        </div>
+    `;
+    container.appendChild(popup);
+    sound.powerup(); // Звук успеха
+
+    // Удалить через 4 сек
+    setTimeout(() => {
+        popup.style.animation = 'fadeOut 0.5s forwards';
+        setTimeout(() => popup.remove(), 500);
+    }, 4000);
+}
 
 
 // --- ЭФФЕКТЫ ---
@@ -252,6 +364,7 @@ class BlackHole {
         this.y = Math.random() * (canvas.height - TOP_BOUND - 100) + TOP_BOUND + 50;
         this.maxLife = 420; this.life = this.maxLife;
         this.active = true; this.radius = 60; this.charge = 0; this.maxCharge = 180; 
+        this.survived = false; // Флаг для ачивки
     }
     update() {
         if (!this.active) return;
@@ -260,7 +373,10 @@ class BlackHole {
             this.charge++; this.life = this.maxLife; 
             if (frameCount % 20 === 0) sound.blackHoleCharge();
             if(frameCount % 5 === 0) particles.push(new Particle(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, '#00ffff'));
-            if (this.charge >= this.maxCharge) this.explode();
+            if (this.charge >= this.maxCharge) {
+                this.survived = true; // Игрок зарядил дыру
+                this.explode();
+            }
         } else {
             this.life--;
             if (this.charge > 0) this.charge = Math.max(0, this.charge - 2); 
@@ -269,6 +385,8 @@ class BlackHole {
     }
     explode() {
         this.active = false; sound.blackHoleBoom();
+        if(this.survived) unlockAchievement('survivor', 'ach_survivor', 'ach_survivor_desc');
+
         [...enemies].forEach((e, idx) => {
             if (e.type === 'boss') { 
                 e.hp -= 1000; floatText.show(e.x, e.y, "-1000", "#ff00ff"); 
@@ -321,15 +439,15 @@ class Loot {
             this.active = false; 
             if(this.type === 'medkit') { 
                 if (player.hp < player.maxHp - 0.5) {
-                    player.heal(player.maxHp * 0.25); floatText.show(this.x, this.y, "+25%", "#00ff00");
+                    player.heal(player.maxHp * 0.25); floatText.show(this.x, this.y, "+25% " + t("item_medkit"), "#00ff00");
                 } else {
-                    medkits++; sound.pickup(); floatText.show(this.x, this.y, "STORED", "#00ffff");
+                    medkits++; sound.pickup(); floatText.show(this.x, this.y, t("loot_stored"), "#00ffff");
                 }
             }
-            else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); }
-            else if(this.type === 'star') { stars++; sound.pickup(); floatText.show(this.x,this.y,"+1", "#ffea00"); }
+            else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y, t("loot_healed"),"#00ff00"); }
+            else if(this.type === 'star') { stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 " + t("item_stars"),"#ffea00"); }
             else if(this.type === 'missile_pack') { 
-                sound.powerup(); floatText.show(this.x,this.y,"ROCKETS!", "#ffaa00");
+                sound.powerup(); floatText.show(this.x,this.y, t("loot_rockets"), "#ffaa00");
                 for(let i=0; i<5; i++) {
                     const t = findNearestEnemy(player.x, player.y);
                     if(t) missiles.push(new Missile(player.x, player.y, t));
@@ -337,15 +455,15 @@ class Loot {
             }
             else if(this.type === 'machine_gun') {
                 player.activateWeapon('machine_gun');
-                sound.powerup(); floatText.show(this.x, this.y, "MINIGUN!", "#00ffff");
+                sound.powerup(); floatText.show(this.x, this.y, t("loot_minigun"), "#00ffff");
             }
             else if(this.type === 'laser_gun') {
                 player.activateWeapon('laser_gun');
-                sound.powerup(); floatText.show(this.x, this.y, "LASER!", "#00ff00");
+                sound.powerup(); floatText.show(this.x, this.y, t("loot_laser"), "#00ff00");
             }
             else if(this.type === 'shotgun') {
                 player.activateWeapon('shotgun');
-                sound.powerup(); floatText.show(this.x, this.y, "SHOTGUN!", "#ff00ff");
+                sound.powerup(); floatText.show(this.x, this.y, t("loot_shotgun"), "#ff00ff");
             }
             else if(this.type === 'xp') { sound.pickup(); player.gainXp(10); }
             updateUI();
@@ -358,18 +476,18 @@ class Loot {
         if (this.type === 'machine_gun') {
             ctx.shadowBlur=10; ctx.shadowColor='#00f3ff'; ctx.fillStyle = '#ccc'; ctx.fillRect(-8, -10, 16, 12);
             ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -8, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-4, -4, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(4, -4, 2, 0, Math.PI*2); ctx.fill();
-            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00f3ff'; ctx.textAlign = "center"; ctx.fillText("GUN", 0, 12);
+            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00f3ff'; ctx.textAlign = "center"; ctx.fillText(t('weapon_gun'), 0, 12);
         }
         else if (this.type === 'laser_gun') {
             ctx.shadowBlur=10; ctx.shadowColor='#00ff00';
             ctx.fillStyle = '#222'; ctx.fillRect(-6, -12, 12, 16);
             ctx.fillStyle = '#00ff00'; ctx.fillRect(-2, -12, 4, 16);
-            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00ff00'; ctx.textAlign = "center"; ctx.fillText("LASER", 0, 14);
+            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00ff00'; ctx.textAlign = "center"; ctx.fillText(t('weapon_laser'), 0, 14);
         }
         else if (this.type === 'shotgun') {
             ctx.shadowBlur=10; ctx.shadowColor='#ff00ff';
             ctx.fillStyle = '#444'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10,-15); ctx.lineTo(10,-15); ctx.fill();
-            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#ff00ff'; ctx.textAlign = "center"; ctx.fillText("SHOT", 0, 12);
+            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#ff00ff'; ctx.textAlign = "center"; ctx.fillText(t('weapon_shotgun'), 0, 12);
         }
         else if(this.type === 'medkit') {
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
@@ -471,6 +589,7 @@ const player = {
         this.baseDmg = 10; this.dmg = 10; this.baseFireRate = 10; this.fireRate = 10;
         this.missiles = 3; this.hitTimer = 0; this.invulnTimer = 0; this.weaponTimer = 0;
         this.currentWeapon = 'normal';
+        laserKills = 0; // Сброс статистики лазера
     },
     update() {
         if(keys['KeyW'] || keys['ArrowUp']) this.y -= 5;
@@ -508,11 +627,11 @@ const player = {
         slot.style.display = 'flex';
 
         if (type === 'machine_gun') {
-            this.fireRate = 4; this.dmg = 15; name.innerText = "MINIGUN";
+            this.fireRate = 4; this.dmg = 15; name.innerText = t("weapon_gun");
         } else if (type === 'laser_gun') {
-            this.fireRate = 15; this.dmg = 30; name.innerText = "LASER";
+            this.fireRate = 15; this.dmg = 30; name.innerText = t("weapon_laser");
         } else if (type === 'shotgun') {
-            this.fireRate = 40; this.dmg = 12; name.innerText = "SHOTGUN";
+            this.fireRate = 40; this.dmg = 12; name.innerText = t("weapon_shotgun");
         }
     },
     shoot() {
@@ -566,7 +685,7 @@ const player = {
             this.hp = 0; updateUI();
             for(let i=0; i<30; i++) particles.push(new Particle(this.x, this.y, '#ff0000'));
             sound.explode();
-            gameOver();
+            gameOver(); // Теперь здесь играет грустная мелодия
             return;
         }
         updateUI();
@@ -605,17 +724,22 @@ class Enemy {
         this.isDefender = !!bossParent;
         this.shootTimer = Math.random() * 120;
 
+        // Множитель сложности (4% за уровень)
+        const difficultyMultiplier = Math.pow(1.04, player.level - 1);
+
         if(boss) {
-            this.x=canvas.width/2; this.y=-100; this.hp=1000 + player.level*200; this.maxHp=this.hp; this.r=70; this.speed=0.5; 
+            this.x=canvas.width/2; this.y=-100; 
+            this.hp=(1000 + player.level*200) * difficultyMultiplier; 
+            this.maxHp=this.hp; this.r=70; this.speed=0.5; 
             this.color='#ff0033'; this.type='boss'; this.rotation=0;
             document.getElementById('bossContainer').style.display='block';
         } 
         else if (this.isDefender) {
             this.x = bossParent.x; this.y = bossParent.y;
-            this.hp = 60 + player.level*10; this.maxHp = this.hp; this.r = 15; this.speed = 0;
+            this.hp = 60 * difficultyMultiplier; this.maxHp = this.hp; this.r = 15; this.speed = 0;
             this.color = '#ff0033'; this.type = 'defender'; this.angleOffset = Math.random() * Math.PI * 2;
             this.orbitRadius = 100;
-            this.damage = 15;
+            this.damage = 15 * difficultyMultiplier;
         }
         else {
             const rand = Math.random(); const edge = Math.floor(Math.random()*4);
@@ -627,25 +751,26 @@ class Enemy {
             if (this.y < TOP_BOUND) this.y = TOP_BOUND - 30;
 
             if(rand < 0.15) { 
-                this.type = 'kamikaze'; this.hp = 10; this.maxHp = 10;
+                this.type = 'kamikaze'; this.hp = 10 * difficultyMultiplier; this.maxHp = this.hp;
                 this.speed = 4.0; this.r = 15; this.color = '#ff4400';
             } else if(rand < 0.3) { 
-                this.type = 'tank'; this.hp = 50 + player.level*8; this.maxHp = this.hp;
+                this.type = 'tank'; this.hp = 50 * difficultyMultiplier; this.maxHp = this.hp;
                 this.speed = 1.0; this.r = 25; this.color = '#ff00ff';
             } else if (rand < 0.6) {
-                this.type = 'runner'; this.hp = 15 + player.level*3; this.maxHp = this.hp;
+                this.type = 'runner'; this.hp = 15 * difficultyMultiplier; this.maxHp = this.hp;
                 this.speed = 3.5; this.r = 12; this.color = '#ffea00';
             } else {
-                this.type = 'normal'; this.hp = 30 + player.level*5; this.maxHp = this.hp;
+                this.type = 'normal'; this.hp = 30 * difficultyMultiplier; this.maxHp = this.hp;
                 this.speed = 2.0; this.r = 18; this.color = '#00ff00';
             }
-            this.damage = 10;
+            this.damage = 10 * difficultyMultiplier;
         }
     }
     update() {
         if(this.type === 'boss') {
             const a = Math.atan2(player.y-this.y, player.x-this.x);
             this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
+            if(this.y < TOP_BOUND + 70) this.y = TOP_BOUND + 70;
             this.angle = a; 
             this.shootTimer--;
             if(this.shootTimer <= 0) {
@@ -731,6 +856,9 @@ function startGame() {
     enemies=[]; bullets=[]; enemyBullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
     medkits=0; stars=0; scoreTime=0; killScore=0; bossActive=false; spawnInterval=90;
     
+    // Таймер уровня (60 сек на 1 уровне, +10 сек за каждый следующий)
+    levelTime = (60 + (player.level - 1) * 10) * 60; 
+
     document.getElementById('bossContainer').style.display='none';
     document.getElementById('machineGunSlot').style.display='none';
     document.getElementById('damageOverlay').className = ''; 
@@ -746,6 +874,7 @@ function togglePause() {
 
 function gameOver() {
     currentState = STATE.GAME_OVER;
+    sound.gameOverTone(); // Грустный звук
     document.getElementById('ui').style.display = 'none';
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').innerText = killScore;
@@ -764,7 +893,14 @@ function showUpgrades() {
     opts.sort(()=>Math.random()-0.5).slice(0,3).forEach(u=>{
         const b=document.createElement('div'); b.className='upgrade-card';
         b.innerHTML=`<h3 style='color:#ffea00'>${u.n}</h3><p>${u.d}</p>`;
-        b.onclick=()=>{ u.f(); document.getElementById('levelUpScreen').style.display='none'; currentState=STATE.PLAYING; updateUI(); };
+        b.onclick=()=>{ 
+            u.f(); 
+            document.getElementById('levelUpScreen').style.display='none'; 
+            // При повышении уровня добавляем время
+            levelTime += 600; // +10 секунд (600 кадров)
+            currentState=STATE.PLAYING; 
+            updateUI(); 
+        };
         c.appendChild(b);
     });
 }
@@ -775,7 +911,10 @@ function updateUI() {
     document.getElementById('hpText').innerText=hp+'/'+player.maxHp;
     document.getElementById('xpBar').style.width=(player.xp/player.nextXp*100)+'%';
     document.getElementById('levelValue').innerText=player.level;
-    document.getElementById('timer').innerText=scoreTime;
+    
+    // Таймер обратного отсчета
+    document.getElementById('levelTimer').innerText=Math.ceil(levelTime/60);
+    
     document.getElementById('medkitVal').innerText=medkits;
     document.getElementById('starVal').innerText=stars;
     document.getElementById('missileVal').innerText=player.missiles;
@@ -795,15 +934,29 @@ function animate() {
     bg.draw();
 
     frameCount++;
+    
+    // Обратный отсчет уровня
+    if (!bossActive) {
+        levelTime--;
+        if (levelTime <= 0) {
+            // Уровень пройден по времени -> Следующий уровень
+            player.gainXp(player.nextXp - player.xp); // Форсируем Level Up
+            levelTime = (60 + (player.level - 1) * 10) * 60; // Новое время
+        }
+    }
+    updateUI(); // Обновляем таймер на экране
+
     if(frameCount%60===0 && !bossActive) {
-        scoreTime++; updateUI();
-        if(scoreTime>0 && scoreTime%60===0) { 
+        // Спавн босса (раз в 60 сек, но таймер уровня важнее)
+        // Для простоты оставим старую логику босса тоже, как "внезапное событие"
+        if(scoreTime > 0 && scoreTime % 60 === 0) { 
             bossActive=true; enemies=[]; 
             const boss = new Enemy(true);
             enemies.push(boss);
             for(let i=0; i<5; i++) enemies.push(new Enemy(false, boss));
         }
         if(Math.random() < 0.03) blackHoles.push(new BlackHole());
+        scoreTime++;
     }
     if(!bossActive && frameCount%spawnInterval===0 && enemies.length<MAX_ENEMIES) enemies.push(new Enemy());
 
@@ -833,7 +986,7 @@ function animate() {
                 e.hp-=b.dmg; 
                 particles.push(new Particle(e.x,e.y,'#fff'));
                 sound.hit();
-                if(e.hp<=0) killEnemy(e,j);
+                if(e.hp<=0) killEnemy(e,j, b.isLaser); // Передаем флаг лазера
                 if(!b.isLaser) break;
             }
         }
@@ -876,7 +1029,12 @@ function animate() {
     floatText.updateAndDraw();
 }
 
-function killEnemy(e, idx) {
+function killEnemy(e, idx, isLaserKill = false) {
+    if (isLaserKill) {
+        laserKills++;
+        if (laserKills >= 50) unlockAchievement('sniper', 'ach_sniper', 'ach_sniper_desc');
+    }
+
     if(e.type === 'kamikaze') {
         sound.explode();
         floatText.show(e.x, e.y, "BOOM!", "#ff0000");
@@ -892,7 +1050,6 @@ function killEnemy(e, idx) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
-        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
@@ -905,6 +1062,5 @@ function killEnemy(e, idx) {
         for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'star'));
         bossActive=false; 
         document.getElementById('bossContainer').style.display='none'; 
-        scoreTime=0; 
     }
 }
