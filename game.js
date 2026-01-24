@@ -27,39 +27,87 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// --- ЗВУКИ ---
+// --- ПРОДВИНУТЫЙ ЗВУКОВОЙ ДВИЖОК (БЕЗ ФАЙЛОВ) ---
 class SoundManager {
-    constructor() { this.ctx = null; }
-    init() {
-        if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-        if (this.ctx.state === 'suspended') { this.ctx.resume(); }
+    constructor() {
+        this.ctx = null;
+        this.masterGain = null;
     }
-    playTone(freq, type, dur, vol=0.1) {
-        if(!this.ctx) return;
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.2; // Громкость 20%
+            this.masterGain.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playTone(freq, type, duration, vol = 1.0, slideFreq = null) {
+        if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        if (slideFreq) {
+            osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration);
+        }
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + dur);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(this.masterGain);
+        osc.start(); osc.stop(this.ctx.currentTime + duration);
     }
-    shoot() { this.playTone(400, 'square', 0.1, 0.05); }
-    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05); }
-    hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
-    pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
-    heal() { this.playTone(400, 'sine', 0.2, 0.1); }
-    powerup() { this.playTone(300, 'square', 0.3, 0.15); }
-    explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
-    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05); }
-    blackHoleBoom() { this.playTone(50, 'square', 1.0, 0.3); }
+
+    playNoise(duration, vol = 1.0) {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.frequency.value = 1000;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        noise.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+        noise.start();
+    }
+
+    // ЗВУКИ
+    shoot() { this.playTone(800, 'square', 0.15, 0.1, 300); }
+    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05, 100); }
+    hit() { this.playTone(150, 'sawtooth', 0.1, 0.2, 50); this.playNoise(0.1, 0.1); }
+    pickup() { this.playTone(1200, 'sine', 0.1, 0.1, 1800); }
+    heal() { 
+        if(!this.ctx) return;
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+        osc.connect(gain); gain.connect(this.masterGain);
+        osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+    }
+    powerup() { 
+        this.playTone(400, 'square', 0.1, 0.1);
+        setTimeout(() => this.playTone(600, 'square', 0.1, 0.1), 100);
+        setTimeout(() => this.playTone(800, 'square', 0.2, 0.1), 200);
+    }
+    explode() { this.playNoise(0.4, 0.4); }
+    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05, 50); }
+    blackHoleBoom() { this.playNoise(1.0, 0.5); }
 }
 const sound = new SoundManager();
 
-// --- ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНО) ---
+// --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener("DOMContentLoaded", () => {
-    // Кнопка СТАРТ (из меню)
     const startBtn = document.getElementById('startBtn');
     if(startBtn) {
         startBtn.addEventListener('click', () => {
@@ -68,20 +116,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Кнопка ПРОДОЛЖИТЬ (из паузы)
     const resumeBtn = document.getElementById('resumeBtn');
-    if(resumeBtn) {
-        resumeBtn.addEventListener('click', togglePause);
-    }
+    if(resumeBtn) resumeBtn.addEventListener('click', togglePause);
 
-    // Кнопки ПЕРЕЗАГРУЗКИ (в окне смерти)
-    // ВАЖНО: Мы больше не делаем location.reload()
     const restartBtns = document.querySelectorAll('#gameOverScreen .cyber-button');
     restartBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Скрываем окно смерти
             document.getElementById('gameOverScreen').style.display = 'none';
-            // Запускаем игру заново (без перезагрузки страницы)
             startGame();
         });
     });
@@ -89,11 +130,11 @@ document.addEventListener("DOMContentLoaded", () => {
     animate();
 });
 
-// Слушатели ввода
 window.addEventListener('keydown', e => {
     keys[e.code] = true; keys[e.key] = true;
     if ((e.code === 'Escape' || e.code === 'KeyP') && currentState === STATE.PLAYING) togglePause();
     
+    // Аптечка [1]
     if (e.key === '1' && currentState === STATE.PLAYING) {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
@@ -170,12 +211,12 @@ class BlackHole {
     constructor() {
         this.x = Math.random() * (canvas.width - 100) + 50;
         this.y = Math.random() * (canvas.height - 100) + 50;
-        this.maxLife = 420; 
+        this.maxLife = 420; // 7 секунд
         this.life = this.maxLife;
         this.active = true;
         this.radius = 60;
         this.charge = 0; 
-        this.maxCharge = 180; 
+        this.maxCharge = 180; // 3 секунды
     }
     update() {
         if (!this.active) return;
@@ -235,7 +276,7 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ ---
+// --- ЛУТ (3D ИКОНКИ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
@@ -267,6 +308,7 @@ class Loot {
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
+        
         if(this.type === 'medkit') {
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
             ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
@@ -414,7 +456,7 @@ const player = {
         
         this.hp -= dmg;
         this.hitTimer = 10; 
-        this.invulnTimer = 30; // 0.5с неуязвимость
+        this.invulnTimer = 30; 
         
         if (this.hp <= 0) {
             this.hp = 0;
@@ -424,7 +466,6 @@ const player = {
             gameOver();
             return;
         }
-        
         updateUI();
         sound.hit();
     },
