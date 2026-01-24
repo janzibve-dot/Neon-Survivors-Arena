@@ -1,6 +1,5 @@
 /* shop.js - Логика магазина и апгрейдов */
 
-// Список товаров
 const SHIPS = [
     {
         id: 'standard',
@@ -17,7 +16,7 @@ const SHIPS = [
         name: 'SCOUT (MK-II)',
         price: 45,
         hp: 60,
-        speed: 7, // Быстрый
+        speed: 7, 
         color: '#ffaa00',
         desc: "Высокая скорость, слабая броня.",
         icon: '⚡'
@@ -26,8 +25,8 @@ const SHIPS = [
         id: 'tank',
         name: 'TITAN (HEAVY)',
         price: 70,
-        hp: 200, // Много HP
-        speed: 3, // Медленный
+        hp: 200, 
+        speed: 3, 
         color: '#00ff00',
         desc: "Тяжелая броня, низкая скорость.",
         icon: '🛡️'
@@ -35,18 +34,15 @@ const SHIPS = [
 ];
 
 const Shop = {
-    // Получить купленные корабли (по умолчанию только standard)
     getPurchased: function() {
         const stored = localStorage.getItem('ns_purchased_ships');
         return stored ? JSON.parse(stored) : ['standard'];
     },
 
-    // Получить текущий выбранный корабль
     getEquipped: function() {
         return localStorage.getItem('ns_equipped_ship') || 'standard';
     },
 
-    // Открыть магазин
     open: function() {
         if (typeof togglePause === 'function' && currentState === STATE.PLAYING) {
             togglePause(); 
@@ -55,18 +51,11 @@ const Shop = {
         this.render();
     },
 
-    // Отрисовка товаров
     render: function() {
         const grid = document.getElementById('shopGrid');
         const purchased = this.getPurchased();
         const equipped = this.getEquipped();
         
-        // Синхронизация звезд (берем из game.js переменной stars)
-        // ВАЖНО: Мы отображаем звезды, накопленные в текущей сессии + сохраненные?
-        // Для простоты будем считать stars глобальной валютой.
-        // Но так как stars сбрасываются при смерти в Roguelike,
-        // давай сделаем "Банк" звезд отдельным от run-currency.
-        // Сейчас используем глобальную переменную stars из game.js.
         document.getElementById('shopStars').innerText = stars;
 
         grid.innerHTML = '';
@@ -102,31 +91,25 @@ const Shop = {
         });
     },
 
-    // Покупка
     buy: function(id) {
         const ship = SHIPS.find(s => s.id === id);
         if (stars >= ship.price) {
             stars -= ship.price;
-            // Обновляем UI в game.js
             if(typeof updateUI === 'function') updateUI(); 
             
             const purchased = this.getPurchased();
             purchased.push(id);
             localStorage.setItem('ns_purchased_ships', JSON.stringify(purchased));
             
-            // Сразу экипируем
             this.equip(id);
         }
     },
 
-    // Экипировка
     equip: function(id) {
         localStorage.setItem('ns_equipped_ship', id);
         this.render();
-        // Если игра не идет, можно сразу обновить игрока
-        // Но проще применить при следующем респауне/старте
         if (typeof player !== 'undefined') {
-            player.applyShipStats(); // Метод добавим в game.js
+            player.applyShipStats();
         }
     },
 
