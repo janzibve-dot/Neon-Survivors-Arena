@@ -230,13 +230,12 @@ class Loot {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
         if(this.type === 'medkit') {
-            // КРАСНЫЙ ЧЕМОДАНЧИК
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); // Ручка
-            ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); // Тень
-            ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); // Корпус
+            ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
+            ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
+            ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); 
             ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
-            ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); // Крест
+            ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); 
             ctx.shadowBlur = 0;
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; ctx.fillText("HP", 0, -22);
         } 
@@ -318,10 +317,11 @@ const player = {
     x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
     dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0,
+    invulnTimer: 0, // ТАЙМЕР НЕУЯЗВИМОСТИ
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
         this.hp = 100; this.maxHp = 100; this.level = 1; this.xp = 0; this.nextXp = 100;
-        this.dmg = 10; this.fireRate = 10; this.missiles = 3; this.hitTimer = 0;
+        this.dmg = 10; this.fireRate = 10; this.missiles = 3; this.hitTimer = 0; this.invulnTimer = 0;
     },
     update() {
         if(keys['KeyW'] || keys['ArrowUp']) this.y -= 5;
@@ -335,6 +335,7 @@ const player = {
         if(this.cooldown>0) this.cooldown--;
         if(this.missileCd>0) this.missileCd--;
         if(this.hitTimer>0) this.hitTimer--;
+        if(this.invulnTimer>0) this.invulnTimer--;
         if(isMouseDown) this.shoot();
     },
     shoot() {
@@ -362,13 +363,26 @@ const player = {
         updateUI();
     },
     takeDamage(dmg) {
+        if(this.invulnTimer > 0) return; // Если есть неуязвимость - игнорируем урон
+        
         this.hp -= dmg;
         this.hitTimer = 10; 
+        this.invulnTimer = 30; // 0.5 секунды неуязвимости
+        
+        if (this.hp < 0) this.hp = 0; // Защита от минуса
         updateUI();
+        sound.hit();
+        
         if(this.hp <= 0) gameOver();
     },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        
+        // Мигание при неуязвимости
+        if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+
         let strokeCol = this.color; let fillCol = '#050505';
         if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
         else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
@@ -435,11 +449,9 @@ class Enemy {
             const a = Math.atan2(player.y-this.y, player.x-this.x);
             this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
             this.angle = a; 
-            
-            // Босс стреляет
             this.shootTimer--;
             if(this.shootTimer <= 0) {
-                this.shootTimer = 60; // Раз в секунду
+                this.shootTimer = 60; 
                 sound.enemyShoot();
                 enemyBullets.push(new Bullet(this.x + Math.cos(a+0.5)*40, this.y + Math.sin(a+0.5)*40, a, 20, true));
                 enemyBullets.push(new Bullet(this.x + Math.cos(a-0.5)*40, this.y + Math.sin(a-0.5)*40, a, 20, true));
@@ -447,13 +459,11 @@ class Enemy {
         }
         else if (this.type === 'defender') {
             if(!this.bossParent || this.bossParent.hp <= 0) {
-                this.hp = 0; // Умирает если босса нет
+                this.hp = 0; 
             } else {
                 this.angleOffset += 0.02;
                 this.x = this.bossParent.x + Math.cos(this.angleOffset) * this.orbitRadius;
                 this.y = this.bossParent.y + Math.sin(this.angleOffset) * this.orbitRadius;
-                
-                // Защитник стреляет
                 this.shootTimer--;
                 if(this.shootTimer <= 0) {
                     this.shootTimer = 120;
@@ -475,37 +485,26 @@ class Enemy {
 
         if(this.boss) { 
             ctx.rotate(this.angle);
-            // БАЗА (Платформа)
             ctx.beginPath();
             ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30);
             ctx.closePath(); ctx.fill(); ctx.stroke();
-            
-            // ТУРЕЛЬ (Круг)
             ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
-            
-            // РАКЕТНИЦЫ (Слева и Справа)
             ctx.fillStyle = '#550000';
-            // Левая
             ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20);
-            // Правая
             ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
-            
-            // Дула
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(35, -35, 5, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(35, 35, 5, 0, Math.PI*2); ctx.fill();
         }
         else if(this.type === 'defender') {
             ctx.rotate(this.angleOffset);
-            // Защитник - ромб
             ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,10); ctx.lineTo(-10,0); ctx.lineTo(0,-10); ctx.closePath();
             ctx.fill(); ctx.stroke();
         }
         else if(this.type === 'tank') {
             ctx.rotate(this.angle);
             ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15);
-            ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.strokeRect(-10, -8, 10, 16);
+            ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeRect(-10, -8, 10, 16);
         }
         else if(this.type === 'runner') {
             ctx.rotate(this.angle);
@@ -563,8 +562,9 @@ function showUpgrades() {
 }
 
 function updateUI() {
-    document.getElementById('hpBar').style.width=(player.hp/player.maxHp*100)+'%';
-    document.getElementById('hpText').innerText=Math.floor(player.hp)+'/'+player.maxHp;
+    const hp = Math.max(0, player.hp); // Фикс минуса для UI
+    document.getElementById('hpBar').style.width=(hp/player.maxHp*100)+'%';
+    document.getElementById('hpText').innerText=Math.floor(hp)+'/'+player.maxHp;
     document.getElementById('xpBar').style.width=(player.xp/player.nextXp*100)+'%';
     document.getElementById('levelValue').innerText=player.level;
     document.getElementById('timer').innerText=scoreTime;
