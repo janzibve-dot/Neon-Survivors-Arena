@@ -15,6 +15,10 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
+// --- ЗАГРУЗКА СПРАЙТОВ ---
+const sprites = { player: new Image() };
+sprites.player.src = 'assets/images/player_ship.png'; 
+
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
 const TRANSLATIONS = {
@@ -86,7 +90,7 @@ let currentStage = 1;
 let spawnInterval = 90;
 const MAX_ENEMIES = 50; 
 let medkits = 0;
-let stars = 0; // Звезды (теперь сохраняются)
+let stars = 0;
 let laserKills = 0;
 let achievements = [];
 let blackHoleTimer = 0; 
@@ -194,10 +198,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // Загрузка звезд из сохранения ПРИ СТАРТЕ СТРАНИЦЫ
+    // Загрузка звезд
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
+    // Загрузка этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     if(saved) document.getElementById('savedStageText').innerText = `SAVED STAGE: ${saved}`;
 
@@ -453,7 +458,9 @@ const player = {
         this.shipType = id;
         const ship = SHIPS.find(s => s.id === id);
         if (ship) {
-            this.maxHp = ship.hp + (currentStage * 10); 
+            // Исправление NaN: если currentStage не число, ставим 1
+            const stage = isNaN(currentStage) ? 1 : currentStage;
+            this.maxHp = ship.hp + (stage * 10); 
             this.hp = this.maxHp;
             this.baseSpeed = ship.speed; 
             this.color = ship.color;
@@ -527,6 +534,10 @@ const player = {
     heal(amount) { this.hp += amount; if(this.hp > this.maxHp) this.hp = this.maxHp; sound.heal(); updateUI(); },
     takeDamage(dmg) {
         if(this.invulnTimer > 0) return; 
+        
+        // Защита от NaN (Бессмертия)
+        if (isNaN(dmg)) dmg = 10;
+        
         this.hp -= dmg; this.hitTimer = 10; this.invulnTimer = 30; 
         if (this.hp <= 0) { this.hp = 0; updateUI(); for(let i=0; i<30; i++) particles.push(new Particle(this.x, this.y, '#ff0000')); sound.explode(); gameOver(); return; }
         updateUI(); sound.hit();
@@ -553,26 +564,32 @@ const player = {
     },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
-        let strokeCol = this.color; let fillCol = '#050505';
-        if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
-        else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
-        if (this.hitTimer <= 0) {
-            const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
-            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
-        }
-        ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
         
-        if (this.shipType === 'tank') {
-            ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
-        } else if (this.shipType === 'scout') {
-            ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // РИСУЕМ КАРТИНКУ, ЕСЛИ ОНА ЗАГРУЖЕНА
+        if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
+            ctx.drawImage(sprites.player, -32, -32, 64, 64);
         } else {
-            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
-            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+            if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
+            let strokeCol = this.color; let fillCol = '#050505';
+            if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
+            else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
+            if (this.hitTimer <= 0) {
+                const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
+                ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
+            }
+            ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
+            
+            if (this.shipType === 'tank') {
+                ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
+            } else if (this.shipType === 'scout') {
+                ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+            } else {
+                ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
+                ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
         }
 
         if (this.hitTimer <= 0) { ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill(); }
@@ -704,6 +721,8 @@ function startGame() {
     // Загрузка сохраненного этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
+    // Защита от ошибок (если NaN)
+    if (isNaN(currentStage)) currentStage = 1;
 
     player.reset(); 
     enemies=[]; bullets=[]; enemyBullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
@@ -791,7 +810,19 @@ function animate() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         bg.draw(); return;
     }
-    if(currentState===STATE.GAME_OVER || currentState===STATE.LEVEL_COMPLETE) return;
+    if(currentState===STATE.GAME_OVER) return;
+    // Теперь РАЗРЕШАЕМ отрисовку при LEVEL_COMPLETE (чтобы собрать лут)
+    if(currentState===STATE.LEVEL_COMPLETE) {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        bg.draw();
+        // Рисуем только игрока и лут, чтобы было красиво на фоне окна победы
+        player.draw();
+        lootList.forEach(l=>{l.update(); l.draw();}); 
+        lootList=lootList.filter(l=>l.active);
+        particles.forEach(p=>{p.draw();}); particles=particles.filter(p=>p.update());
+        floatText.updateAndDraw();
+        return;
+    }
     if(currentState!==STATE.PLAYING) return;
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -813,7 +844,7 @@ function animate() {
     if(frameCount%60===0 && !bossActive) {
         if(blackHoleTimer <= 0 && Math.random() < 0.1) {
             blackHoles.push(new BlackHole());
-            blackHoleTimer = 1200; // Кулдаун 20 секунд
+            blackHoleTimer = 1200; 
         }
         scoreTime++;
     }
@@ -890,10 +921,10 @@ function killEnemy(e, idx, isLaserKill = false) {
 
     enemies.splice(idx,1); killScore+=e.boss?1000:100;
     
+    // ЛУТ ДЛЯ ОБЫЧНЫХ ВРАГОВ
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
-        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
@@ -901,10 +932,26 @@ function killEnemy(e, idx, isLaserKill = false) {
         else if(r < 0.87) lootList.push(new Loot(e.x,e.y,'laser_gun'));
         else if(r < 0.92) lootList.push(new Loot(e.x,e.y,'shotgun'));
     } 
+    // ЛУТ ДЛЯ БОССА (ИСПРАВЛЕНО!)
     else if(e.boss) {
-        currentState = STATE.LEVEL_COMPLETE;
+        lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
+        // Выпадение кучи оружия
+        lootList.push(new Loot(e.x+20,e.y+20,'missile_pack'));
+        lootList.push(new Loot(e.x-20,e.y+20,'machine_gun'));
+        
+        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*60-30),e.y+(Math.random()*60-30),'star'));
+        
+        bossActive=false; 
         document.getElementById('bossContainer').style.display='none';
-        document.getElementById('levelCompleteScreen').style.display='flex';
+        
         sound.powerup(); 
+        
+        // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды, чтобы собрать лут)
+        setTimeout(() => {
+            if(currentState === STATE.PLAYING) { // Проверка, не умер ли игрок за это время
+                currentState = STATE.LEVEL_COMPLETE;
+                document.getElementById('levelCompleteScreen').style.display='flex';
+            }
+        }, 3000);
     }
 }
