@@ -13,27 +13,20 @@
     <div id="damageOverlay"></div>
 
     <div id="startScreen" class="screen">
-        
         <div class="retro-sign">
             <span class="flicker-slow">R</span>ET<span class="flicker-fast">R</span>O 
             <span class="flicker-med">G</span>AM<span class="off">E</span>S
         </div>
-
         <h1 class="game-title">CYBERPUNK SURVIVOR</h1>
-
+        
         <div class="controls-box cyber-panel">
             <h3>:: УПРАВЛЕНИЕ СИСТЕМОЙ ::</h3>
             <div class="info-grid">
                 <div class="info-row"><span class="key">[W,A,S,D]</span> <span class="desc">Движение</span></div>
                 <div class="info-row"><span class="key">[МЫШЬ]</span> <span class="desc">Прицеливание</span></div>
                 <div class="info-row"><span class="key">[ЛКМ]</span> <span class="desc">Огонь</span></div>
-                <div class="info-row"><span class="key">[ПКМ]</span> <span class="desc">Ракеты (Самонавод.)</span></div>
+                <div class="info-row"><span class="key">[ПКМ]</span> <span class="desc">Ракеты</span></div>
                 <div class="info-row"><span class="key">[1]</span> <span class="desc">Аптечка</span></div>
-            </div>
-            <hr class="cyber-line">
-            <div class="features-list">
-                <p>⚠️ БОСС КАЖДЫЕ 60 СЕКУНД</p>
-                <p>📦 ЛУТ: <span style="color:#ff0033">АПТЕЧКИ</span>, <span style="color:#ffea00">ЗВЕЗДЫ</span>, <span style="color:#ffaa00">РАКЕТЫ</span></p>
             </div>
         </div>
 
@@ -42,41 +35,69 @@
 
     <div id="ui">
         <div id="top-dashboard">
-            <div class="dash-group">
-                <span class="label">LVL</span>
-                <span id="levelValue" class="val-text">1</span>
-                <div class="xp-bar-mini"><div id="xpBar" class="fill"></div></div>
+            
+            <div class="dash-box level-box">
+                <span class="label">LEVEL</span>
+                <span id="levelValue" class="val-text big-num">1</span>
+                <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
             </div>
 
-            <div class="dash-group">
+            <div class="dash-box time-box">
                 <span class="label">TIME</span>
                 <span id="timer" class="val-text highlight">0</span>
             </div>
 
-            <div class="dash-group loot-display">
-                <div class="res-slot" style="color: #ff0033;">
-                    <span class="icon">✚</span> <span id="medkitVal">0</span>
+            <div class="loot-container">
+                <div class="res-slot frame-red">
+                    <span class="icon">✚</span> 
+                    <div class="res-info">
+                        <span id="medkitVal">0</span>
+                        <span class="res-name">MEDKIT</span>
+                    </div>
                 </div>
-                <div class="res-slot" style="color: #ffea00;">
-                    <span class="icon">★</span> <span id="starVal">0</span>
+                <div class="res-slot frame-yellow">
+                    <span class="icon">★</span> 
+                    <div class="res-info">
+                        <span id="starVal">0</span>
+                        <span class="res-name">CREDITS</span>
+                    </div>
                 </div>
-                <div class="res-slot" style="color: #ffaa00;">
-                    <span class="icon">▲</span> <span id="missileVal">0</span>
+                <div class="res-slot frame-orange">
+                    <span class="icon">▲</span> 
+                    <div class="res-info">
+                        <span id="missileVal">0</span>
+                        <span class="res-name">ROCKETS</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="dash-group hp-group">
-                <span class="label">HP</span>
-                <div class="hp-bar-mini"><div id="hpBar" class="fill"></div></div>
+            <div class="dash-box hp-box">
+                <span class="label">SHIELD / HP</span>
+                <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
                 <span id="hpText" class="hp-num">100/100</span>
+            </div>
+
+            <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.toggle()">
+                <span class="icon">🛒</span>
+                <span class="label">SHOP</span>
             </div>
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div class="boss-label cyber-text-small">// УГРОЗА ОМЕГА-КЛАССА //</div>
+             <div class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.8);">
+        <div class="cyber-panel shop-panel">
+            <h2 style="color:var(--cyber-yellow)">ОРУЖЕЙНАЯ</h2>
+            <p>Система улучшений временно недоступна...</p>
+            <div class="shop-grid">
+                </div>
+            <button id="closeShopBtn" class="cyber-button">ЗАКРЫТЬ</button>
         </div>
     </div>
 
@@ -85,18 +106,15 @@
         <button id="resumeBtn" class="cyber-button">ПРОДОЛЖИТЬ</button>
     </div>
 
-    <div id="levelUpScreen" class="screen cyber-panel" style="display: none;">
-        <h2 class="cyber-text">>> АПГРЕЙД СИСТЕМЫ <<</h2>
-        <div id="upgradeContainer"></div>
-    </div>
-
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
         <h1 class="alert-text">КРИТИЧЕСКИЙ СБОЙ</h1>
         <p class="cyber-subtext">ИТОГОВЫЙ СЧЕТ: <span id="finalScore" class="cyber-highlight">0</span></p>
-        <button onclick="location.reload()" class="cyber-button">ПЕРЕЗАГРУЗКА</button>
+        <button class="cyber-button">ПЕРЕЗАГРУЗКА</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
+    
+    <script src="shop.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
