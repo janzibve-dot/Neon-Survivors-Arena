@@ -13,6 +13,10 @@
     <div class="scanlines"></div>
     <div id="damageOverlay"></div>
 
+    <button id="langBtn" class="lang-button">RU</button>
+
+    <div id="achievementContainer"></div>
+
     <div id="startScreen" class="screen">
         <div class="retro-sign">
             <span class="flicker-slow">R</span>ET<span class="flicker-fast">R</span>O 
@@ -21,31 +25,31 @@
         <h1 class="game-title">CYBERPUNK SURVIVOR</h1>
         
         <div class="controls-box cyber-panel">
-            <h3>:: УПРАВЛЕНИЕ СИСТЕМОЙ ::</h3>
+            <h3 data-lang="controls_title">:: УПРАВЛЕНИЕ СИСТЕМОЙ ::</h3>
             <div class="info-grid">
-                <div class="info-row"><span class="key">[W,A,S,D]</span> <span class="desc">Движение</span></div>
-                <div class="info-row"><span class="key">[МЫШЬ]</span> <span class="desc">Прицеливание</span></div>
-                <div class="info-row"><span class="key">[ЛКМ]</span> <span class="desc">Огонь</span></div>
-                <div class="info-row"><span class="key">[ПКМ]</span> <span class="desc">Ракеты</span></div>
-                <div class="info-row"><span class="key">[1]</span> <span class="desc">Аптечка</span></div>
+                <div class="info-row"><span class="key">[W,A,S,D]</span> <span class="desc" data-lang="move">Движение</span></div>
+                <div class="info-row"><span class="key">[MOUSE]</span> <span class="desc" data-lang="aim">Прицеливание</span></div>
+                <div class="info-row"><span class="key">[LMB]</span> <span class="desc" data-lang="fire">Огонь</span></div>
+                <div class="info-row"><span class="key">[RMB]</span> <span class="desc" data-lang="rockets">Ракеты</span></div>
+                <div class="info-row"><span class="key">[1]</span> <span class="desc" data-lang="medkit">Аптечка</span></div>
             </div>
         </div>
 
-        <button id="startBtn" class="cyber-button big-btn">ЗАПУСК СИСТЕМЫ</button>
+        <button id="startBtn" class="cyber-button big-btn" data-lang="start_btn">ЗАПУСК СИСТЕМЫ</button>
     </div>
 
     <div id="ui">
         <div id="top-dashboard">
             
             <div class="dash-box level-box">
-                <span class="label">LEVEL</span>
+                <span class="label" data-lang="level_label">LEVEL</span>
                 <span id="levelValue" class="val-text big-num">1</span>
                 <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
             </div>
 
             <div class="dash-box time-box">
-                <span class="label">TIME</span>
-                <span id="timer" class="val-text highlight">0</span>
+                <span class="label" data-lang="time_label">NEXT WAVE</span>
+                <span id="levelTimer" class="val-text highlight">60</span>
             </div>
 
             <div class="loot-container">
@@ -53,28 +57,28 @@
                     <span class="icon">✚</span> 
                     <div class="res-info">
                         <span id="medkitVal">0</span>
-                        <span class="res-name">MEDKIT</span>
+                        <span class="res-name" data-lang="item_medkit">MEDKIT</span>
                     </div>
                 </div>
                 <div class="res-slot frame-yellow">
                     <span class="icon">★</span> 
                     <div class="res-info">
                         <span id="starVal">0</span>
-                        <span class="res-name">STARS</span>
+                        <span class="res-name" data-lang="item_stars">STARS</span>
                     </div>
                 </div>
                 <div class="res-slot frame-orange">
                     <span class="icon">▲</span> 
                     <div class="res-info">
                         <span id="missileVal">0</span>
-                        <span class="res-name">ROCKETS</span>
+                        <span class="res-name" data-lang="item_rockets">ROCKETS</span>
                     </div>
                 </div>
                 <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
                     <span class="icon">⚡</span> 
                     <div class="res-info">
                         <span id="gunTimer">0s</span>
-                        <span class="res-name">WEAPON</span>
+                        <span class="res-name" id="weaponName">WEAPON</span>
                     </div>
                 </div>
             </div>
@@ -87,12 +91,12 @@
 
             <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.toggle()">
                 <span class="icon">🛒</span>
-                <span class="label">SHOP</span>
+                <span class="label" data-lang="shop_btn">SHOP</span>
             </div>
         </div>
 
         <div id="bossContainer" style="display: none;">
-             <div class="boss-label cyber-text-small">⚠️ WARNING: OMEGA THREAT ⚠️</div>
+             <div class="boss-label cyber-text-small" data-lang="boss_warning">⚠️ WARNING: OMEGA THREAT ⚠️</div>
             <div class="tech-bar-container">
                 <div class="tech-bar-fill boss-fill" id="bossHpBar" style="width: 100%;"></div>
             </div>
@@ -101,30 +105,29 @@
 
     <div id="levelUpScreen" class="screen" style="display: none; background: rgba(0,0,0,0.9);">
         <div class="cyber-panel">
-            <h2 style="color:var(--cyber-cyan); margin-bottom: 30px; text-shadow: 0 0 10px var(--cyber-cyan);">СИСТЕМА ОБНОВЛЕНА</h2>
-            <div id="upgradeContainer" class="upgrade-grid">
-                </div>
+            <h2 style="color:var(--cyber-cyan); margin-bottom: 30px; text-shadow: 0 0 10px var(--cyber-cyan);" data-lang="levelup_title">СИСТЕМА ОБНОВЛЕНА</h2>
+            <div id="upgradeContainer" class="upgrade-grid"></div>
         </div>
     </div>
 
     <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.95);">
         <div class="cyber-panel shop-panel">
-            <h2 style="color:var(--cyber-yellow)">ОРУЖЕЙНАЯ</h2>
-            <p>Система улучшений временно недоступна...</p>
+            <h2 style="color:var(--cyber-yellow)" data-lang="shop_title">ОРУЖЕЙНАЯ</h2>
+            <p data-lang="shop_desc">Система улучшений временно недоступна...</p>
             <div class="shop-grid"></div>
-            <button id="closeShopBtn" class="cyber-button">ЗАКРЫТЬ</button>
+            <button id="closeShopBtn" class="cyber-button" data-lang="close_btn">ЗАКРЫТЬ</button>
         </div>
     </div>
 
     <div id="pauseScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="glitch-text">ПАУЗА</h1>
-        <button id="resumeBtn" class="cyber-button">ПРОДОЛЖИТЬ</button>
+        <h1 class="glitch-text" data-lang="pause_title">ПАУЗА</h1>
+        <button id="resumeBtn" class="cyber-button" data-lang="resume_btn">ПРОДОЛЖИТЬ</button>
     </div>
 
     <div id="gameOverScreen" class="screen cyber-panel" style="display: none;">
-        <h1 class="alert-text">КРИТИЧЕСКИЙ СБОЙ</h1>
-        <p class="cyber-subtext">ИТОГОВЫЙ СЧЕТ: <span id="finalScore" class="cyber-highlight">0</span></p>
-        <button class="cyber-button">ПЕРЕЗАГРУЗКА</button>
+        <h1 class="alert-text" data-lang="gameover_title">КРИТИЧЕСКИЙ СБОЙ</h1>
+        <p class="cyber-subtext"><span data-lang="score_text">ИТОГОВЫЙ СЧЕТ:</span> <span id="finalScore" class="cyber-highlight">0</span></p>
+        <button class="cyber-button restart-btn" data-lang="restart_btn">ПЕРЕЗАГРУЗКА</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
