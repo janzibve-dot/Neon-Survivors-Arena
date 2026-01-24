@@ -15,6 +15,11 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
+// --- ЗАГРУЗКА СПРАЙТОВ ---
+const sprites = { player: new Image(), boss: new Image() };
+sprites.player.src = 'assets/images/player.png'; 
+sprites.boss.src = 'assets/images/boss.png';
+
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
 const TRANSLATIONS = {
@@ -82,7 +87,7 @@ function toggleLanguage() {
 // Глобальные
 let frameCount = 0;
 let bossTimer = 0;
-let bossDefeated = false; // ФЛАГ: БОСС ПОБЕЖДЕН
+let bossDefeated = false; 
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
 let currentStage = 1; 
@@ -240,6 +245,32 @@ function unlockAchievement(id, titleKey, descKey) {
     setTimeout(() => { popup.style.animation = 'fadeOut 0.5s forwards'; setTimeout(() => popup.remove(), 500); }, 4000);
 }
 
+// --- НОВЫЙ КЛАСС: ЦИФРЫ УРОНА ---
+class DamageNumber {
+    constructor(x, y, dmg, isCrit) {
+        this.x = x; this.y = y;
+        this.text = "-" + Math.round(dmg);
+        this.life = 60;
+        this.isCrit = isCrit;
+        this.vy = isCrit ? -2 : -1;
+    }
+    update() {
+        this.y += this.vy;
+        this.life--;
+        return this.life > 0;
+    }
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.life / 60;
+        ctx.font = this.isCrit ? "bold 24px 'Orbitron'" : "bold 16px 'Share Tech Mono'";
+        ctx.fillStyle = this.isCrit ? "#ff0000" : "#ffffff";
+        ctx.shadowBlur = 5; ctx.shadowColor = "#000";
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+let damageNumbers = [];
+
 // --- ЭФФЕКТЫ ---
 class Background {
     constructor() {
@@ -252,6 +283,7 @@ class Background {
     }
     draw(isHyperspace) {
         this.stars.forEach(s => {
+            // Эффект гиперпрыжка
             if (isHyperspace) {
                 s.y += s.speed * 50; 
                 ctx.strokeStyle = s.color;
@@ -632,7 +664,7 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // РИСУЕМ КАРТИНКУ
+        // РИСУЕМ КАРТИНКУ, ЕСЛИ ОНА ЗАГРУЖЕНА
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
             // ДОБАВЛЕНО СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
             ctx.shadowBlur = 20;
