@@ -86,7 +86,9 @@ let currentStage = 1;
 let spawnInterval = 90;
 const MAX_ENEMIES = 50; 
 let medkits = 0;
-let stars = 0;
+// --- ПРАВКА №5: ЗАГРУЗКА ЗВЕЗД ИЗ ПАМЯТИ ---
+let stars = parseInt(localStorage.getItem('neon_survivor_stars')) || 0;
+
 let laserKills = 0;
 let achievements = [];
 let blackHoleTimer = 0; 
@@ -194,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // Загрузка звезд из сохранения
+    // Загрузка звезд
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -345,7 +347,7 @@ class Loot {
             else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y, t("loot_healed"),"#00ff00"); }
             else if(this.type === 'star') { 
                 stars++; 
-                localStorage.setItem('neon_survivor_stars', stars); // Сохраняем звезды
+                localStorage.setItem('neon_survivor_stars', stars); 
                 sound.pickup(); floatText.show(this.x,this.y,"+1 " + t("item_stars"),"#ffea00"); 
             }
             else if(this.type === 'missile_pack') { 
@@ -446,7 +448,7 @@ const player = {
     cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0, invulnTimer: 0,
     weaponTimer: 0, currentWeapon: 'normal',
     rage: 0, maxRage: 100,
-    shipType: 'standard', // Тип корабля
+    shipType: 'standard', 
     
     // ПРИМЕНЕНИЕ СТАТОВ КОРАБЛЯ
     applyShipStats() {
@@ -456,20 +458,17 @@ const player = {
         // Базовые статы
         const ship = SHIPS.find(s => s.id === id);
         if (ship) {
-            this.maxHp = ship.hp + (currentStage * 10); // +HP за каждый этап
+            this.maxHp = ship.hp + (currentStage * 10); 
             this.hp = this.maxHp;
-            this.baseSpeed = ship.speed; // Надо добавить скорость в update
+            this.baseSpeed = ship.speed; 
             this.color = ship.color;
         }
     },
 
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
-        
-        // Загрузка типа корабля
         this.applyShipStats();
 
-        // Если первый запуск
         if (currentStage === 1) {
             this.level = 1; this.xp = 0; this.nextXp = 100;
             this.baseDmg = 10; this.baseFireRate = 10;
@@ -571,16 +570,12 @@ const player = {
         }
         ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
         
-        // ОТРИСОВКА В ЗАВИСИМОСТИ ОТ ТИПА КОРАБЛЯ
         if (this.shipType === 'tank') {
-            // ТАНК (Квадратный)
             ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
             ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
         } else if (this.shipType === 'scout') {
-            // СКАУТ (Стрела)
             ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
         } else {
-            // СТАНДАРТ (TIE)
             ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
             ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
@@ -862,59 +857,4 @@ function animate() {
 
     missiles.forEach((m,i)=>{
         m.update(); m.draw();
-        if(!m.active){missiles.splice(i,1); return;}
-        for(let j=enemies.length-1; j>=0; j--) {
-            let e=enemies[j];
-            if(Math.hypot(e.x-m.x, e.y-m.y) < e.r+10) {
-                e.hp-=100; m.active=false; sound.explode();
-                for(let k=0;k<10;k++) particles.push(new Particle(m.x,m.y,'#ffaa00'));
-                if(e.hp<=0) killEnemy(e,j);
-                break;
-            }
-        }
-    });
-
-    enemies.forEach(e=>{
-        e.update(); e.draw();
-        if(e.boss) document.getElementById('bossHpBar').style.width=(e.hp/e.maxHp*100)+'%';
-        if(Math.hypot(player.x-e.x, player.y-e.y) < player.radius+e.r) {
-            if (e.type === 'kamikaze') killEnemy(e, enemies.indexOf(e));
-            else player.takeDamage(e.damage);
-        }
-    });
-
-    lootList.forEach(l=>{l.update(); l.draw();}); lootList=lootList.filter(l=>l.active);
-    particles.forEach(p=>{p.draw();}); particles=particles.filter(p=>p.update());
-    floatText.updateAndDraw();
-}
-
-function killEnemy(e, idx, isLaserKill = false) {
-    player.addRage(5);
-    if (isLaserKill) { laserKills++; if (laserKills >= 50) unlockAchievement('sniper', 'ach_sniper', 'ach_sniper_desc'); }
-
-    if(e.type === 'kamikaze') {
-        sound.explode(); floatText.show(e.x, e.y, "BOOM!", "#ff0000");
-        for(let k=0; k<20; k++) particles.push(new Particle(e.x, e.y, '#ff4400'));
-        if(Math.hypot(player.x-e.x, player.y-e.y) < 150) player.takeDamage(30);
-        enemies.forEach(other => { if(other !== e && Math.hypot(other.x-e.x, other.y-e.y) < 150) other.hp -= 100; });
-    }
-
-    enemies.splice(idx,1); killScore+=e.boss?1000:100;
-    
-    if(!e.boss && !e.isDefender) {
-        lootList.push(new Loot(e.x,e.y,'xp'));
-        const r = Math.random();
-        if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
-        else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
-        else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
-        else if(r < 0.82) lootList.push(new Loot(e.x,e.y-10,'missile_pack'));
-        else if(r < 0.87) lootList.push(new Loot(e.x,e.y,'laser_gun'));
-        else if(r < 0.92) lootList.push(new Loot(e.x,e.y,'shotgun'));
-    } 
-    else if(e.boss) {
-        currentState = STATE.LEVEL_COMPLETE;
-        document.getElementById('bossContainer').style.display='none';
-        document.getElementById('levelCompleteScreen').style.display='flex';
-        sound.powerup(); 
-    }
-}
+        if(!m.active){
