@@ -203,11 +203,12 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ ---
+// --- ЛУТ (АПТЕЧКА И ЗВЕЗДЫ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = 600; 
+        // Все живут 10 секунд (600 кадров), кроме Мега-аптечки (она чуть дольше)
+        this.life = (type==='mega_medkit') ? 900 : 600; 
         this.active=true; 
         this.hoverOffset = 0;
     }
@@ -246,10 +247,23 @@ class Loot {
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
-            ctx.shadowBlur = 10; ctx.shadowColor = '#ffea00';
-            ctx.fillStyle = '#ffea00'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#b8860b'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffea00'; ctx.textAlign = "center"; ctx.fillText("BONUS", 0, -15);
+            // ЗОЛОТАЯ ПУЛЬСИРУЮЩАЯ ЗВЕЗДА
+            const pulse = 1 + Math.sin(frameCount * 0.2) * 0.2; // Эффект пульсации
+            ctx.scale(pulse, pulse);
+            
+            ctx.shadowBlur = 15; ctx.shadowColor = '#ffd700';
+            ctx.fillStyle = '#ffd700'; // Золото
+            
+            // Рисуем 5-конечную звезду
+            ctx.beginPath();
+            for(let i=0; i<5; i++) {
+                ctx.lineTo(Math.cos((18 + i*72) / 180 * Math.PI) * 10, -Math.sin((18 + i*72) / 180 * Math.PI) * 10);
+                ctx.lineTo(Math.cos((54 + i*72) / 180 * Math.PI) * 5, -Math.sin((54 + i*72) / 180 * Math.PI) * 5);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Без текста "BONUS"
         } 
         else if(this.type === 'missile') {
             ctx.rotate(-Math.PI/4);
@@ -317,7 +331,7 @@ const player = {
     x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
     dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0,
-    invulnTimer: 0, // ТАЙМЕР НЕУЯЗВИМОСТИ
+    invulnTimer: 0, 
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
         this.hp = 100; this.maxHp = 100; this.level = 1; this.xp = 0; this.nextXp = 100;
@@ -363,13 +377,13 @@ const player = {
         updateUI();
     },
     takeDamage(dmg) {
-        if(this.invulnTimer > 0) return; // Если есть неуязвимость - игнорируем урон
+        if(this.invulnTimer > 0) return; 
         
         this.hp -= dmg;
         this.hitTimer = 10; 
-        this.invulnTimer = 30; // 0.5 секунды неуязвимости
+        this.invulnTimer = 30; 
         
-        if (this.hp < 0) this.hp = 0; // Защита от минуса
+        if (this.hp < 0) this.hp = 0; 
         updateUI();
         sound.hit();
         
@@ -378,7 +392,6 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // Мигание при неуязвимости
         if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) {
             ctx.globalAlpha = 0.5;
         }
@@ -664,7 +677,7 @@ function killEnemy(e, idx) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         if(Math.random()<0.05) lootList.push(new Loot(e.x+10,e.y,'medkit'));
-        if(Math.random()<0.60) lootList.push(new Loot(e.x-10,e.y,'star'));
+        if(Math.random()<0.25) lootList.push(new Loot(e.x-10,e.y,'star'));
         if(Math.random()<0.15) lootList.push(new Loot(e.x,e.y+10,'missile'));
     } 
     else if(e.boss) {
