@@ -17,6 +17,8 @@
     </div>
 
     <button id="langBtn" class="lang-button">RU</button>
+    <button id="musicBtn" class="music-button">♫ OFF</button>
+    
     <div id="achievementContainer"></div>
 
     <div id="startScreen" class="screen">
@@ -45,49 +47,53 @@
     <div id="ui">
         <div id="top-dashboard">
             
-            <div class="dash-box level-box">
-                <span class="label" data-lang="stage_label">STAGE</span>
-                <span id="stageValue" class="val-text big-num">1</span>
-                <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
-            </div>
-
-            <div class="dash-box time-box">
-                <span class="label" data-lang="boss_timer_label">BOSS IN</span>
-                <span id="levelTimer" class="val-text highlight">60</span>
-            </div>
-
-            <div class="dash-box score-box">
-                <span class="label">SCORE</span>
-                <div class="score-vals">
-                    <span id="currentScore" class="val-text">0</span>
+            <div class="dash-group">
+                <div class="dash-box level-box">
+                    <span class="label" data-lang="stage_label">STAGE</span>
+                    <span id="stageValue" class="val-text big-num">1</span>
+                    <div class="xp-bar-thick"><div id="xpBar" class="fill"></div></div>
+                </div>
+                <div class="dash-box time-box">
+                    <span class="label" data-lang="boss_timer_label">BOSS IN</span>
+                    <span id="levelTimer" class="val-text highlight">60</span>
                 </div>
             </div>
 
-            <div class="loot-container">
-                <div class="res-slot frame-red">
-                    <span class="icon">✚</span> <span id="medkitVal">0</span>
+            <div class="dash-group">
+                 <div class="dash-box score-box">
+                    <span class="label">SCORE</span>
+                    <div class="score-vals">
+                        <span id="currentScore" class="val-text">0</span>
+                    </div>
                 </div>
-                <div class="res-slot frame-yellow">
-                    <span class="icon">★</span> <span id="starVal">0</span>
-                </div>
-                <div class="res-slot frame-orange">
-                    <span class="icon">▲</span> <span id="missileVal">0</span>
-                </div>
-                <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
-                    <span class="icon">⚡</span> <span id="gunTimer">0s</span>
+                <div class="loot-container">
+                    <div class="res-slot frame-red">
+                        <span class="icon">✚</span> <span id="medkitVal">0</span>
+                    </div>
+                    <div class="res-slot frame-yellow">
+                        <span class="icon">★</span> <span id="starVal">0</span>
+                    </div>
+                    <div class="res-slot frame-orange">
+                        <span class="icon">▲</span> <span id="missileVal">0</span>
+                    </div>
+                    <div id="machineGunSlot" class="res-slot frame-cyan" style="display: none;">
+                        <span class="icon">⚡</span> 
+                        <span id="gunTimer">0s</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="dash-box hp-box">
-                <span class="label">HP / RAGE [R]</span>
-                <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
-                <span id="hpText" class="hp-num">100/100</span>
-                <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
-            </div>
-
-            <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.open()">
-                <span class="icon">🛒</span>
-                <span class="label" data-lang="shop_btn">SHOP</span>
+            <div class="dash-group">
+                <div class="dash-box hp-box">
+                    <span class="label">HP / RAGE [R]</span>
+                    <div class="hp-bar-thick"><div id="hpBar" class="fill"></div></div>
+                    <span id="hpText" class="hp-num">100/100</span>
+                    <div class="rage-bar-thick"><div id="rageBar" class="fill"></div></div>
+                </div>
+                <div id="shopBtn" class="dash-box shop-btn-box" onclick="Shop.open()">
+                    <span class="icon">🛒</span>
+                    <span class="label" data-lang="shop_btn">SHOP</span>
+                </div>
             </div>
         </div>
 
