@@ -17,7 +17,7 @@ const TOP_BOUND = 100;
 
 // --- ЗАГРУЗКА СПРАЙТОВ ---
 const sprites = { player: new Image() };
-sprites.player.src = 'assets/images/player_ship.png'; 
+sprites.player.src = 'assets/images/player.png'; 
 
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
@@ -162,6 +162,8 @@ class SoundManager {
     }
     explode() { this.playNoise(0.6, 0.5); }
     ult() { this.playTone('ult1', 100, 'sawtooth', 1.0, 0.5, 800); this.playNoise(1.0, 0.5); }
+    siren() { this.playTone('siren', 600, 'sawtooth', 0.5, 0.2, 300); }
+    
     checkHeartbeat(hp, maxHp) {
         if (!this.ctx) return;
         const pct = hp / maxHp;
@@ -198,11 +200,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // Загрузка звезд
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
-    // Загрузка этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     if(saved) document.getElementById('savedStageText').innerText = `SAVED STAGE: ${saved}`;
 
@@ -337,6 +337,33 @@ class BlackHole {
 }
 let blackHoles = [];
 
+// --- ДРОН (НОВОЕ) ---
+class Drone {
+    constructor() {
+        this.angle = 0; this.radius = 60; this.shootTimer = 0;
+    }
+    update() {
+        this.angle += 0.05;
+        this.x = player.x + Math.cos(this.angle) * this.radius;
+        this.y = player.y + Math.sin(this.angle) * this.radius;
+        this.shootTimer--;
+        if(this.shootTimer <= 0) {
+            const target = findNearestEnemy(this.x, this.y);
+            if(target) {
+                // Стреляет маленьким лазером
+                bullets.push(new Bullet(this.x, this.y, Math.atan2(target.y-this.y, target.x-this.x), 5, false, true));
+                this.shootTimer = 60; // 1 выстрел в сек
+            }
+        }
+    }
+    draw() {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#00f3ff'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.stroke();
+    }
+}
+let drone = null;
+
 class Loot {
     constructor(x, y, type) { this.x=x; this.y=y; this.type=type; this.life = 600; this.active=true; this.hoverOffset = 0; }
     update() {
@@ -458,12 +485,15 @@ const player = {
         this.shipType = id;
         const ship = SHIPS.find(s => s.id === id);
         if (ship) {
-            // Исправление NaN: если currentStage не число, ставим 1
             const stage = isNaN(currentStage) ? 1 : currentStage;
             this.maxHp = ship.hp + (stage * 10); 
             this.hp = this.maxHp;
             this.baseSpeed = ship.speed; 
             this.color = ship.color;
+        }
+        // Загрузка дрона
+        if (localStorage.getItem('ns_has_drone') === 'true') {
+            drone = new Drone();
         }
     },
 
@@ -721,7 +751,6 @@ function startGame() {
     // Загрузка сохраненного этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
-    // Защита от ошибок (если NaN)
     if (isNaN(currentStage)) currentStage = 1;
 
     player.reset(); 
@@ -734,6 +763,7 @@ function startGame() {
     document.getElementById('bossContainer').style.display='none';
     document.getElementById('machineGunSlot').style.display='none';
     document.getElementById('damageOverlay').className = ''; 
+    document.getElementById('bossWarningOverlay').classList.remove('boss-warning-active');
     document.getElementById('bestScore').innerText = 'HI: ' + highScore;
     
     currentState = STATE.PLAYING;
@@ -767,6 +797,7 @@ function gameOver() {
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').innerText = killScore;
     document.getElementById('damageOverlay').className = '';
+    document.getElementById('bossWarningOverlay').classList.remove('boss-warning-active');
     if (killScore > highScore) { highScore = killScore; localStorage.setItem('neon_survivor_score', highScore); }
 }
 
@@ -811,11 +842,9 @@ function animate() {
         bg.draw(); return;
     }
     if(currentState===STATE.GAME_OVER) return;
-    // Теперь РАЗРЕШАЕМ отрисовку при LEVEL_COMPLETE (чтобы собрать лут)
     if(currentState===STATE.LEVEL_COMPLETE) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         bg.draw();
-        // Рисуем только игрока и лут, чтобы было красиво на фоне окна победы
         player.draw();
         lootList.forEach(l=>{l.update(); l.draw();}); 
         lootList=lootList.filter(l=>l.active);
@@ -831,8 +860,18 @@ function animate() {
     frameCount++;
     if (blackHoleTimer > 0) blackHoleTimer--;
 
+    // Логика Босса и Предупреждения
     if (!bossActive) {
         bossTimer--;
+        
+        // Предупреждение (за 5 сек = 300 кадров)
+        if (bossTimer <= 300 && bossTimer > 0) {
+            document.getElementById('bossWarningOverlay').classList.add('boss-warning-active');
+            if (bossTimer % 60 === 0) sound.siren();
+        } else {
+            document.getElementById('bossWarningOverlay').classList.remove('boss-warning-active');
+        }
+
         if (bossTimer <= 0) {
             bossActive = true; enemies = []; 
             const boss = new Enemy(true); enemies.push(boss);
@@ -856,6 +895,7 @@ function animate() {
     else if (!isLow && overlay.classList.contains('critical-health')) overlay.classList.remove('critical-health');
 
     player.update(); player.draw();
+    if(drone) { drone.update(); drone.draw(); }
 
     blackHoles.forEach((bh, i) => { bh.update(); bh.draw(); if(!bh.active) blackHoles.splice(i, 1); });
 
@@ -948,7 +988,7 @@ function killEnemy(e, idx, isLaserKill = false) {
         
         // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды, чтобы собрать лут)
         setTimeout(() => {
-            if(currentState === STATE.PLAYING) { // Проверка, не умер ли игрок за это время
+            if(currentState === STATE.PLAYING) { 
                 currentState = STATE.LEVEL_COMPLETE;
                 document.getElementById('levelCompleteScreen').style.display='flex';
             }
