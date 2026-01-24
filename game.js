@@ -1,4 +1,3 @@
-
 /* game.js */
 
 const canvas = document.getElementById('gameCanvas');
@@ -50,6 +49,7 @@ class SoundManager {
     enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05); }
     hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
     pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
+    heal() { this.playTone(400, 'sine', 0.2, 0.1); } // Звук лечения
     powerup() { this.playTone(300, 'square', 0.3, 0.15); }
     explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
     blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05); }
@@ -70,12 +70,13 @@ window.onload = function() {
 window.addEventListener('keydown', e => {
     keys[e.code] = true; keys[e.key] = true;
     if ((e.code === 'Escape' || e.code === 'KeyP') && currentState === STATE.PLAYING) togglePause();
+    // Использование аптечки из инвентаря
     if (e.key === '1' && currentState === STATE.PLAYING) {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
-            player.hp = Math.min(player.hp + 30, player.maxHp);
-            sound.pickup();
-            floatText.show(player.x, player.y, "+30 HP", "#00ff00");
+            player.hp = Math.min(player.hp + (player.maxHp * 0.25), player.maxHp);
+            sound.heal();
+            floatText.show(player.x, player.y, "+25% HP", "#00ff00");
             updateUI();
         }
     }
@@ -143,28 +144,36 @@ class Particle {
 }
 let particles = [];
 
-// --- ЧЕРНАЯ ДЫРА ---
+// --- ЧЕРНАЯ ДЫРА (НОВАЯ ЛОГИКА) ---
 class BlackHole {
     constructor() {
         this.x = Math.random() * (canvas.width - 100) + 50;
         this.y = Math.random() * (canvas.height - 100) + 50;
-        this.life = 420; 
+        this.maxLife = 420; // 7 секунд
+        this.life = this.maxLife;
         this.active = true;
-        this.radius = 50;
+        this.radius = 60;
         this.charge = 0; 
-        this.maxCharge = 180;
+        this.maxCharge = 180; // 3 секунды
     }
     update() {
-        this.life--;
-        if (this.life <= 0) this.active = false;
         const dist = Math.hypot(player.x - this.x, player.y - this.y);
+        
         if (dist < this.radius) {
+            // Игрок внутри: Таймер жизни сбрасывается/замирает, идет зарядка
+            this.life = this.maxLife; 
             this.charge++;
+            
             if (frameCount % 10 === 0) sound.blackHoleCharge();
             particles.push(new Particle(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, '#00ffff'));
+            
             if (this.charge >= this.maxCharge) this.explode();
         } else {
-            if(this.charge > 0) this.charge--;
+            // Игрок снаружи: Таймер жизни тикает, заряд сбрасывается
+            this.life--;
+            if(this.charge > 0) this.charge = Math.max(0, this.charge - 5); // Быстрый сброс заряда
+            
+            if (this.life <= 0) this.active = false;
         }
     }
     explode() {
@@ -172,42 +181,59 @@ class BlackHole {
         sound.blackHoleBoom();
         enemies.forEach((e, idx) => {
             if (e.isBoss) {
-                e.hp -= 500; floatText.show(e.x, e.y, "-500 DAMAGE", "#ff00ff");
+                e.hp -= 800; floatText.show(e.x, e.y, "-800 DAMAGE", "#ff00ff");
             } else {
                 e.hp = 0; particles.push(new Particle(e.x, e.y, '#ff0000')); killEnemy(e, idx);
             }
         });
-        for(let i=0; i<50; i++) particles.push(new Particle(this.x, this.y, '#ffffff'));
+        for(let i=0; i<60; i++) particles.push(new Particle(this.x, this.y, '#ffffff'));
         floatText.show(this.x, this.y, "GRAVITY COLLAPSE!", "#ffffff");
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y);
         const rot = frameCount * 0.1; ctx.rotate(rot);
-        ctx.globalAlpha = this.life / 100;
-        ctx.strokeStyle = '#330033'; ctx.lineWidth = 5;
+        
+        // Внешнее кольцо (Жизнь) - Фиолетовое
+        ctx.strokeStyle = '#550055'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.stroke();
+
+        // Спираль дыры
         ctx.fillStyle = '#110011';
         ctx.beginPath(); ctx.arc(0, 0, this.radius - 5, 0, Math.PI*2); ctx.fill();
+        
+        // Прогресс зарядки (Синий круг внутри)
         const chargePct = this.charge / this.maxCharge;
-        ctx.fillStyle = '#00f3ff';
-        ctx.globalAlpha = 0.5 + (Math.sin(frameCount*0.5)*0.2);
-        ctx.beginPath(); ctx.arc(0, 0, (this.radius - 10) * chargePct, 0, Math.PI*2); ctx.fill();
+        if(chargePct > 0) {
+            ctx.fillStyle = '#00f3ff';
+            ctx.globalAlpha = 0.5 + (Math.sin(frameCount*0.5)*0.2);
+            ctx.beginPath(); ctx.arc(0, 0, (this.radius - 10) * chargePct, 0, Math.PI*2); ctx.fill();
+        }
         ctx.restore();
-        if (this.active) {
-            ctx.fillStyle = '#fff'; ctx.font = "12px monospace"; ctx.textAlign = "center";
-            const secLeft = Math.ceil((this.maxCharge - this.charge) / 60);
-            if (this.charge > 0) ctx.fillText(`HOLD: ${secLeft}s`, this.x, this.y - 60);
+
+        // ТАЙМЕРЫ НАД ДЫРОЙ
+        ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
+        
+        if (this.charge > 0) {
+            // Таймер активации (Зеленый/Синий)
+            const secLeft = ((this.maxCharge - this.charge) / 60).toFixed(2);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(`CHARGE: ${secLeft}`, this.x, this.y - this.radius - 10);
+        } else {
+            // Таймер исчезновения (Красный)
+            const secLife = (this.life / 60).toFixed(2);
+            ctx.fillStyle = '#ff0033';
+            ctx.fillText(`VANISH: ${secLife}`, this.x, this.y - this.radius - 10);
         }
     }
 }
 let blackHoles = [];
 
 
-// --- ЛУТ (ИКОНКИ) ---
+// --- ЛУТ ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = 600; 
+        this.life = 600; // 10 секунд
         this.active=true; 
         this.hoverOffset = 0;
     }
@@ -215,13 +241,42 @@ class Loot {
         this.life--; 
         this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
         
-        if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
-            this.active = false; sound.pickup();
-            if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"+1 MEDKIT","#ff0033"); }
-            else if(this.type === 'mega_medkit') { player.hp = player.maxHp; sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); }
-            else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"+1 STAR","#ffea00"); }
-            else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"+1 ROCKET","#ffaa00"); }
-            else if(this.type === 'xp') player.gainXp(10);
+        if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
+            this.active = false; 
+            
+            if(this.type === 'medkit') { 
+                // УМНАЯ АПТЕЧКА
+                if (player.hp < player.maxHp) {
+                    // Лечим сразу
+                    const healAmount = player.maxHp * 0.25;
+                    player.hp = Math.min(player.hp + healAmount, player.maxHp);
+                    sound.heal();
+                    floatText.show(this.x, this.y, "HEALED", "#00ff00");
+                } else {
+                    // В инвентарь
+                    medkits++; 
+                    sound.pickup();
+                    floatText.show(this.x, this.y, "STORED", "#00ffff");
+                }
+            }
+            else if(this.type === 'mega_medkit') { 
+                player.hp = player.maxHp; 
+                sound.powerup(); 
+                floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); 
+            }
+            else if(this.type === 'star') { 
+                stars++; 
+                sound.pickup();
+                floatText.show(this.x,this.y,"+1 STAR","#ffea00"); 
+            }
+            else if(this.type === 'missile') { 
+                player.missiles++; 
+                sound.pickup();
+                floatText.show(this.x,this.y,"+1 ROCKET","#ffaa00"); 
+            }
+            else if(this.type === 'xp') {
+                player.gainXp(10);
+            }
             updateUI();
         }
         if(this.life<=0) this.active = false;
@@ -230,6 +285,7 @@ class Loot {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
         if(this.type === 'medkit') {
+            // Красный чемоданчик
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
             ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
@@ -246,6 +302,7 @@ class Loot {
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
+            // ЗОЛОТАЯ ПУЛЬСИРУЮЩАЯ ЗВЕЗДА (5 лучей)
             const pulse = 1 + Math.sin(frameCount * 0.2) * 0.2;
             ctx.scale(pulse, pulse);
             ctx.shadowBlur = 15; ctx.shadowColor = '#ffd700';
@@ -323,7 +380,7 @@ const player = {
     x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
     dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0,
-    invulnTimer: 0, // Таймер неуязвимости
+    invulnTimer: 0, 
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
         this.hp = 100; this.maxHp = 100; this.level = 1; this.xp = 0; this.nextXp = 100;
@@ -369,18 +426,17 @@ const player = {
         updateUI();
     },
     takeDamage(dmg) {
-        if(this.invulnTimer > 0) return; // Если есть неуязвимость - игнорируем урон
+        if(this.invulnTimer > 0) return; // Неуязвимость
         
         this.hp -= dmg;
         this.hitTimer = 10; 
-        this.invulnTimer = 30; // 0.5 сек неуязвимости
+        this.invulnTimer = 30; // 0.5с защиты
         
-        if (this.hp < 0) this.hp = 0; // Не даем уйти в минус
+        if (this.hp < 0) this.hp = 0; 
         updateUI();
         sound.hit();
         
         if(this.hp <= 0) {
-            // Эффект смерти
             for(let i=0; i<30; i++) particles.push(new Particle(this.x, this.y, '#ff0000'));
             sound.explode();
             gameOver();
@@ -573,10 +629,9 @@ function showUpgrades() {
 }
 
 function updateUI() {
-    // Math.ceil чтобы не было "0/100" когда жив
-    const hpShow = Math.ceil(player.hp); 
-    document.getElementById('hpBar').style.width=(Math.max(0, player.hp)/player.maxHp*100)+'%';
-    document.getElementById('hpText').innerText=hpShow+'/'+player.maxHp;
+    const hp = Math.max(0, player.hp); // Фикс минуса для UI
+    document.getElementById('hpBar').style.width=(hp/player.maxHp*100)+'%';
+    document.getElementById('hpText').innerText=Math.floor(hp)+'/'+player.maxHp;
     document.getElementById('xpBar').style.width=(player.xp/player.nextXp*100)+'%';
     document.getElementById('levelValue').innerText=player.level;
     document.getElementById('timer').innerText=scoreTime;
