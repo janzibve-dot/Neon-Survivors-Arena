@@ -15,11 +15,6 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
-// --- ЗАГРУЗКА СПРАЙТОВ ---
-const sprites = { player: new Image(), boss: new Image() };
-sprites.player.src = 'assets/images/player.png'; 
-sprites.boss.src = 'assets/images/boss.png';
-
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
 const TRANSLATIONS = {
@@ -87,7 +82,7 @@ function toggleLanguage() {
 // Глобальные
 let frameCount = 0;
 let bossTimer = 0;
-let bossDefeated = false; 
+let bossDefeated = false; // ФЛАГ: БОСС ПОБЕЖДЕН
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
 let currentStage = 1; 
@@ -141,11 +136,6 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         src.connect(filter); filter.connect(gain); gain.connect(this.masterGain); src.start(); src.stop(this.ctx.currentTime + duration);
     }
-    // МУЗЫКА ОТКЛЮЧЕНА (пустая функция)
-    toggleMusic() {}
-    startMusic() {}
-    stopMusic() {}
-
     gameOverTone() {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
@@ -250,32 +240,6 @@ function unlockAchievement(id, titleKey, descKey) {
     setTimeout(() => { popup.style.animation = 'fadeOut 0.5s forwards'; setTimeout(() => popup.remove(), 500); }, 4000);
 }
 
-// --- НОВЫЙ КЛАСС: ЦИФРЫ УРОНА ---
-class DamageNumber {
-    constructor(x, y, dmg, isCrit) {
-        this.x = x; this.y = y;
-        this.text = "-" + Math.round(dmg);
-        this.life = 60;
-        this.isCrit = isCrit;
-        this.vy = isCrit ? -2 : -1;
-    }
-    update() {
-        this.y += this.vy;
-        this.life--;
-        return this.life > 0;
-    }
-    draw() {
-        ctx.save();
-        ctx.globalAlpha = this.life / 60;
-        ctx.font = this.isCrit ? "bold 24px 'Orbitron'" : "bold 16px 'Share Tech Mono'";
-        ctx.fillStyle = this.isCrit ? "#ff0000" : "#ffffff";
-        ctx.shadowBlur = 5; ctx.shadowColor = "#000";
-        ctx.fillText(this.text, this.x, this.y);
-        ctx.restore();
-    }
-}
-let damageNumbers = [];
-
 // --- ЭФФЕКТЫ ---
 class Background {
     constructor() {
@@ -288,7 +252,6 @@ class Background {
     }
     draw(isHyperspace) {
         this.stars.forEach(s => {
-            // Эффект гиперпрыжка
             if (isHyperspace) {
                 s.y += s.speed * 50; 
                 ctx.strokeStyle = s.color;
@@ -669,11 +632,16 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // РИСУЕМ КАРТИНКУ, ЕСЛИ ОНА ЗАГРУЖЕНА
+        // РИСУЕМ КАРТИНКУ
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
-            ctx.drawImage(sprites.player, -32, -32, 64, 64);
+            // ДОБАВЛЕНО СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f3ff';
+            // УВЕЛИЧЕН РАЗМЕР КОРАБЛЯ ДО 80x80
+            ctx.drawImage(sprites.player, -40, -40, 80, 80);
+            ctx.shadowBlur = 0; // Сброс
         } else {
-            // ФОЛБЭК ЕСЛИ КАРТИНКИ НЕТ
+            // Запасной вариант (треугольник)
             if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
             let strokeCol = this.color; let fillCol = '#050505';
             if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
@@ -783,19 +751,19 @@ class Enemy {
         ctx.save(); ctx.translate(this.x, this.y);
 
         if(this.type.includes('boss')) {
-            // ИСПРАВЛЕНИЕ: ПОВОРОТ БОССА
+            // ИСПРАВЛЕНИЕ: ПОВОРОТ БОССА (Если картинка смотрит ВНИЗ, то -90 градусов)
             ctx.rotate(this.angle - Math.PI / 2);
 
-            // ФОЛБЭК: Всегда рисуем картинку, если она есть
             if (sprites.boss && sprites.boss.complete && sprites.boss.naturalWidth > 0) {
-                // НЕОНОВОЕ СВЕЧЕНИЕ
+                // НЕОНОВОЕ СВЕЧЕНИЕ ДЛЯ БОССА
                 ctx.shadowBlur = 30;
                 ctx.shadowColor = this.type === 'tank_boss' ? '#00ff00' : (this.type === 'ninja_boss' ? '#9d00ff' : '#ff0033');
+                
                 const size = this.r * 2.5; 
                 ctx.drawImage(sprites.boss, -size/2, -size/2, size, size);
                 ctx.shadowBlur = 0;
             } else {
-                // Если нет картинки - рисуем фигуры
+                // ФОЛБЭК ЕСЛИ КАРТИНКА НЕ ГРУЗИТСЯ
                 ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
                 if (this.type === 'tank_boss') {
                     ctx.fillStyle = '#003300';
@@ -812,7 +780,7 @@ class Enemy {
             }
         }
         else {
-            ctx.rotate(this.angle); 
+            ctx.rotate(this.angle); // Обычные враги поворачиваются стандартно
             ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
             
             if(this.type === 'kamikaze') {
@@ -844,6 +812,7 @@ function startGame() {
     // Скрываем контейнер босса при старте, чтобы полоска не висела
     document.getElementById('bossContainer').style.display = 'none';
     
+    // ПРАВКА: Загружаем сохраненный этап (не сбрасываем stars)
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
     if (isNaN(currentStage)) currentStage = 1;
@@ -1066,6 +1035,7 @@ function killEnemy(e, idx, isLaserKill = false) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
+        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
@@ -1076,6 +1046,7 @@ function killEnemy(e, idx, isLaserKill = false) {
     // ЛУТ ДЛЯ БОССА
     else if(e.boss) {
         lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
+        // Выпадение кучи оружия
         lootList.push(new Loot(e.x+20,e.y+20,'missile_pack'));
         lootList.push(new Loot(e.x-20,e.y+20,'machine_gun'));
         
@@ -1089,7 +1060,7 @@ function killEnemy(e, idx, isLaserKill = false) {
         
         sound.powerup(); 
         
-        // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды)
+        // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды, чтобы собрать лут)
         setTimeout(() => {
             if(currentState === STATE.PLAYING) { 
                 currentState = STATE.LEVEL_COMPLETE;
