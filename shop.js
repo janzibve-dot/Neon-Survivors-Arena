@@ -58,11 +58,22 @@ const Shop = {
     },
 
     open: function() {
-        if (typeof togglePause === 'function' && currentState === STATE.PLAYING) {
-            togglePause(); 
+        // СТАВИМ ИГРУ НА ПАУЗУ
+        if (currentState === STATE.PLAYING) {
+            currentState = STATE.PAUSE;
+            // Можно также вызвать togglePause(), но мы просто меняем состояние, 
+            // чтобы update цикл в game.js перестал работать
         }
         document.getElementById('shopModal').style.display = 'flex';
         this.render();
+    },
+    
+    close: function() {
+        document.getElementById('shopModal').style.display = 'none';
+        // ВОЗВРАЩАЕМ В ИГРУ
+        if (currentState === STATE.PAUSE) {
+            currentState = STATE.PLAYING;
+        }
     },
 
     render: function() {
@@ -142,14 +153,10 @@ const Shop = {
     toggle: function() {
         const modal = document.getElementById('shopModal');
         if (modal.style.display === 'none') this.open();
-        else {
-            modal.style.display = 'none';
-            if (typeof togglePause === 'function' && currentState === STATE.PAUSE) togglePause();
-        }
+        else this.close();
     }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    const closeBtn = document.getElementById('closeShopBtn');
-    if(closeBtn) closeBtn.onclick = () => Shop.toggle();
+    // Уже настроено в HTML через onclick="Shop.close()"
 });
