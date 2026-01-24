@@ -202,7 +202,7 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ ---
+// --- ЛУТ (ИКОНКИ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
@@ -213,6 +213,7 @@ class Loot {
     update() {
         this.life--; 
         this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
+        // НЕТ МАГНИТА
         if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
             this.active = false; sound.pickup();
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"+1 MEDKIT","#ff0033"); }
@@ -297,15 +298,15 @@ class Missile {
 }
 let missiles = [];
 
-// --- ИГРОК (TIE SILENCER STYLE) ---
+// --- ИГРОК (КОСМИЧЕСКИЙ КОРАБЛЬ) ---
 const player = {
-    x: 0, y: 0, radius: 25, color: '#fff', 
+    x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
-    dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0,
+    dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0,
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
         this.hp = 100; this.maxHp = 100; this.level = 1; this.xp = 0; this.nextXp = 100;
-        this.dmg = 10; this.fireRate = 10; this.missiles = 3;
+        this.dmg = 10; this.fireRate = 10; this.missiles = 3; this.hitTimer = 0;
     },
     update() {
         if(keys['KeyW'] || keys['ArrowUp']) this.y -= 5;
@@ -318,6 +319,7 @@ const player = {
         
         if(this.cooldown>0) this.cooldown--;
         if(this.missileCd>0) this.missileCd--;
+        if(this.hitTimer>0) this.hitTimer--;
         if(isMouseDown) this.shoot();
     },
     shoot() {
@@ -344,62 +346,74 @@ const player = {
         }
         updateUI();
     },
+    takeDamage(dmg) {
+        this.hp -= dmg;
+        this.hitTimer = 10; // 10 кадров мигания
+        updateUI();
+        if(this.hp <= 0) gameOver();
+    },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
 
-        // -- ДВИГАТЕЛИ (След) --
-        const flicker = Math.random() * 3;
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
-        ctx.fillStyle = '#00ffff';
-        // Два следа от двигателей (сверху и снизу)
-        ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2);
-        ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
-        ctx.shadowBlur = 0;
+        // Цвета при уроне
+        let strokeCol = this.color;
+        let fillCol = '#050505'; // Черный корпус
+        if (this.hitTimer > 0) {
+            // МИГАНИЕ КРАСНЫМ
+            strokeCol = '#ff0000';
+            fillCol = '#550000'; // Темно-красный корпус
+            ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000';
+        } else {
+            ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+        }
 
-        // -- СТОЙКИ (Соединяют крылья и корпус) --
-        ctx.fillStyle = '#111';
-        ctx.fillRect(-5, -15, 6, 30); // Центральная перемычка
+        // 1. Двигатели (след)
+        if (this.hitTimer <= 0) {
+            const flicker = Math.random() * 3;
+            ctx.fillStyle = strokeCol;
+            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2);
+            ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
+        }
 
-        // -- КРЫЛЬЯ (Вертикальные панели) --
-        // Отрисуем левое крыло (в координатах canvas это верхнее, если нос смотрит вправо)
-        // Верхнее крыло
-        ctx.fillStyle = '#050505'; // Темный корпус
+        // 2. Вертикальные крылья (TIE Style)
+        ctx.fillStyle = fillCol; 
+        ctx.strokeStyle = strokeCol; 
+        ctx.lineWidth = 2;
+
+        // Левое крыло (верхнее)
         ctx.beginPath();
-        ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10);
-        ctx.fill();
-        // Свечение на крыле
-        ctx.shadowBlur = 15; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-15, -23, 20, 2); // Полоса света
-        ctx.shadowBlur = 0;
-
-        // Нижнее крыло
-        ctx.fillStyle = '#050505';
+        ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        
+        // Правое крыло (нижнее)
         ctx.beginPath();
-        ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10);
-        ctx.fill();
-        // Свечение
-        ctx.shadowBlur = 15; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-15, 21, 20, 2);
-        ctx.shadowBlur = 0;
+        ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath();
+        ctx.fill(); ctx.stroke();
 
-        // -- ЦЕНТРАЛЬНЫЙ КОРПУС --
-        ctx.fillStyle = '#111';
+        // Соединительные стойки
+        ctx.fillRect(-5, -15, 6, 30);
+        ctx.strokeRect(-5, -15, 6, 30);
+
+        // 3. Центральный корпус (Капсула)
         ctx.beginPath();
         ctx.moveTo(15, 0); // Нос
         ctx.lineTo(-5, 6); 
         ctx.lineTo(-10, 0); 
         ctx.lineTo(-5, -6);
-        ctx.fill();
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
 
         // Кабина (светящаяся)
-        ctx.shadowBlur = 5; ctx.shadowColor = '#ccffff'; ctx.fillStyle = '#ccffff';
-        ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(-2, 3); ctx.lineTo(-2, -3); ctx.fill();
+        if (this.hitTimer <= 0) {
+            ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill();
+        }
 
         ctx.restore();
     }
 };
 
-// --- ВРАГИ ---
+// --- ВРАГИ (КОСМИЧЕСКИЕ КОРАБЛИ) ---
 class Enemy {
     constructor(boss=false) {
         this.boss = boss;
@@ -417,13 +431,13 @@ class Enemy {
 
             if(rand < 0.2) { 
                 this.type = 'tank'; this.hp = 50 + player.level*8; this.maxHp = this.hp;
-                this.speed = 1.0; this.r = 25; this.color = '#ff00ff'; this.darkColor='#440044';
+                this.speed = 1.0; this.r = 25; this.color = '#ff00ff'; // Фиолетовый
             } else if (rand < 0.5) {
                 this.type = 'runner'; this.hp = 15 + player.level*3; this.maxHp = this.hp;
-                this.speed = 3.5; this.r = 12; this.color = '#ffea00'; this.darkColor='#664400';
+                this.speed = 3.5; this.r = 12; this.color = '#ffea00'; // Желтый
             } else {
                 this.type = 'normal'; this.hp = 30 + player.level*5; this.maxHp = this.hp;
-                this.speed = 2.0; this.r = 18; this.color = '#00ff00'; this.darkColor='#003300';
+                this.speed = 2.0; this.r = 18; this.color = '#00ff00'; // Зеленый
             }
             this.damage = 10;
         }
@@ -431,37 +445,56 @@ class Enemy {
     update() {
         const a = Math.atan2(player.y-this.y, player.x-this.x);
         this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
-        if(this.type==='runner') this.angle = a;
-        if(this.type==='boss') this.rotation += 0.02;
+        this.angle = a; // Все враги смотрят на игрока
+        if(this.type==='boss') this.rotation += 0.01;
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y);
-        ctx.shadowBlur=10; ctx.shadowColor=this.color;
-        
+        ctx.shadowBlur=15; ctx.shadowColor=this.color;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = this.color;
+        ctx.fillStyle = '#050505'; // Черный корпус
+
         if(this.boss) { 
             ctx.rotate(this.rotation);
-            ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle = this.color;
+            // Корпус босса (Крейсер)
+            ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            // Вращающиеся щиты
             for(let i=0; i<4; i++) {
-                ctx.rotate(Math.PI/2); ctx.fillRect(-10, -60, 20, 20); ctx.strokeStyle='#fff'; ctx.strokeRect(-10, -60, 20, 20);
-                ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(0,-60); ctx.stroke();
+                ctx.rotate(Math.PI/2);
+                ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(10, -60); ctx.lineTo(-10, -60); ctx.closePath();
+                ctx.fill(); ctx.stroke();
             }
         }
         else if(this.type === 'tank') {
-            ctx.rotate(Math.PI/4); 
-            ctx.fillStyle = this.darkColor; ctx.beginPath(); for(let i=0;i<8;i++) ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4)); ctx.fill();
-            ctx.strokeStyle = this.color; ctx.lineWidth=3; ctx.stroke();
-            ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
+            ctx.rotate(this.angle);
+            // Танк: Тяжелый штурмовик (Широкий)
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            // Детали брони
+            ctx.strokeRect(-10, -8, 10, 16);
         }
         else if(this.type === 'runner') {
             ctx.rotate(this.angle);
-            ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
+            // Бегун: Перехватчик (Стрела)
+            ctx.beginPath();
+            ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
         }
         else { 
-            ctx.fillStyle = this.darkColor; ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
-            ctx.strokeStyle = this.color; ctx.lineWidth=2; ctx.stroke();
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
+            // Обычный: Дрон (Крылатый)
+            ctx.rotate(this.angle);
+            ctx.beginPath();
+            ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            // Крылья дрона
+            ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-15, 15); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-15, -15); ctx.stroke();
         }
         ctx.restore();
     }
@@ -577,13 +610,7 @@ function animate() {
         e.update(); e.draw();
         if(e.boss) document.getElementById('bossHpBar').style.width=(e.hp/e.maxHp*100)+'%';
         if(Math.hypot(player.x-e.x, player.y-e.y) < player.radius+e.r) {
-            player.hp-=1; updateUI();
-            if(player.hp<=0) {
-                currentState=STATE.GAME_OVER;
-                document.getElementById('ui').style.display='none';
-                document.getElementById('gameOverScreen').style.display='flex';
-                document.getElementById('finalScore').innerText=killScore;
-            }
+            player.takeDamage(e.damage);
         }
     });
 
