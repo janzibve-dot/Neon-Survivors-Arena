@@ -9,7 +9,8 @@ const SHIPS = [
         speed: 5,
         color: '#00f3ff',
         desc: "Баланс скорости и брони.",
-        icon: '🚀'
+        icon: '🚀',
+        type: 'ship'
     },
     {
         id: 'scout',
@@ -19,7 +20,8 @@ const SHIPS = [
         speed: 7, 
         color: '#ffaa00',
         desc: "Высокая скорость, слабая броня.",
-        icon: '⚡'
+        icon: '⚡',
+        type: 'ship'
     },
     {
         id: 'tank',
@@ -29,7 +31,19 @@ const SHIPS = [
         speed: 3, 
         color: '#00ff00',
         desc: "Тяжелая броня, низкая скорость.",
-        icon: '🛡️'
+        icon: '🛡️',
+        type: 'ship'
+    },
+    {
+        id: 'drone',
+        name: 'LASER DRONE',
+        price: 100,
+        hp: 0, 
+        speed: 0, 
+        color: '#ffffff',
+        desc: "Автоматический помощник.",
+        icon: '🛸',
+        type: 'upgrade'
     }
 ];
 
@@ -60,31 +74,38 @@ const Shop = {
 
         grid.innerHTML = '';
 
-        SHIPS.forEach(ship => {
-            const isOwned = purchased.includes(ship.id);
-            const isEquipped = equipped === ship.id;
+        SHIPS.forEach(item => {
+            const isOwned = purchased.includes(item.id);
+            const isEquipped = equipped === item.id;
             
             const card = document.createElement('div');
             card.className = 'shop-card';
             
             let btnHtml = '';
-            if (isEquipped) {
-                btnHtml = `<button class="card-btn btn-equipped">ВЫБРАНО</button>`;
-            } else if (isOwned) {
-                btnHtml = `<button class="card-btn btn-equip" onclick="Shop.equip('${ship.id}')">ВЫБРАТЬ</button>`;
-            } else {
-                if (stars >= ship.price) {
-                    btnHtml = `<button class="card-btn btn-buy" onclick="Shop.buy('${ship.id}')">КУПИТЬ (${ship.price}★)</button>`;
+            
+            if (item.type === 'ship') {
+                if (isEquipped) {
+                    btnHtml = `<button class="card-btn btn-equipped">ВЫБРАНО</button>`;
+                } else if (isOwned) {
+                    btnHtml = `<button class="card-btn btn-equip" onclick="Shop.equip('${item.id}')">ВЫБРАТЬ</button>`;
                 } else {
-                    btnHtml = `<button class="card-btn btn-locked">НЕТ СРЕДСТВ (${ship.price}★)</button>`;
+                    if (stars >= item.price) btnHtml = `<button class="card-btn btn-buy" onclick="Shop.buy('${item.id}')">КУПИТЬ (${item.price}★)</button>`;
+                    else btnHtml = `<button class="card-btn btn-locked">НЕТ СРЕДСТВ (${item.price}★)</button>`;
+                }
+            } else {
+                if (isOwned) {
+                    btnHtml = `<button class="card-btn btn-equipped">КУПЛЕНО</button>`;
+                } else {
+                    if (stars >= item.price) btnHtml = `<button class="card-btn btn-buy" onclick="Shop.buy('${item.id}')">КУПИТЬ (${item.price}★)</button>`;
+                    else btnHtml = `<button class="card-btn btn-locked">НЕТ СРЕДСТВ (${item.price}★)</button>`;
                 }
             }
 
             card.innerHTML = `
-                <div class="card-icon" style="color:${ship.color}">${ship.icon}</div>
-                <div class="card-title" style="color:${ship.color}">${ship.name}</div>
-                <div class="card-stats">HP: ${ship.hp} | SPD: ${ship.speed}</div>
-                <div class="card-stats" style="margin-bottom: 15px;">${ship.desc}</div>
+                <div class="card-icon" style="color:${item.color}">${item.icon}</div>
+                <div class="card-title" style="color:${item.color}">${item.name}</div>
+                <div class="card-stats">${item.type === 'ship' ? `HP: ${item.hp} | SPD: ${item.speed}` : 'PASSIVE'}</div>
+                <div class="card-stats" style="margin-bottom: 15px;">${item.desc}</div>
                 ${btnHtml}
             `;
             grid.appendChild(card);
@@ -92,17 +113,21 @@ const Shop = {
     },
 
     buy: function(id) {
-        const ship = SHIPS.find(s => s.id === id);
-        if (stars >= ship.price) {
-            stars -= ship.price;
-            localStorage.setItem('neon_survivor_stars', stars); // Сохраняем баланс
+        const item = SHIPS.find(s => s.id === id);
+        if (stars >= item.price) {
+            stars -= item.price;
+            localStorage.setItem('neon_survivor_stars', stars);
             if(typeof updateUI === 'function') updateUI(); 
             
             const purchased = this.getPurchased();
             purchased.push(id);
             localStorage.setItem('ns_purchased_ships', JSON.stringify(purchased));
             
-            this.equip(id);
+            if (item.type === 'ship') this.equip(id);
+            else {
+                if (id === 'drone') localStorage.setItem('ns_has_drone', 'true');
+                this.render();
+            }
         }
     },
 
