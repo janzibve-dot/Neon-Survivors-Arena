@@ -10,7 +10,7 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4, LEVEL_COMPLETE: 5 };
+const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4, LEVEL_COMPLETE: 5, SHOP: 6 };
 let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
@@ -34,14 +34,15 @@ const TRANSLATIONS = {
         boss_ninja: "⚠️ ОПАСНОСТЬ: НИНДЗЯ-БОСС ⚠️",
         boss_tank: "⚠️ ОПАСНОСТЬ: ТЯЖЕЛЫЙ ТАНК ⚠️",
         levelup_title: "СИСТЕМА ОБНОВЛЕНА",
-        shop_title: "ОРУЖЕЙНАЯ", shop_desc: "Система улучшений временно недоступна...", close_btn: "ЗАКРЫТЬ",
+        shop_title: "ОРУЖЕЙНАЯ", shop_desc: "Система улучшений временно недоступна...", close_btn: "ВЫХОД (ЗАКРЫТЬ)",
         pause_title: "ПАУЗА", resume_btn: "ПРОДОЛЖИТЬ",
         gameover_title: "КРИТИЧЕСКИЙ СБОЙ", score_text: "ИТОГОВЫЙ СЧЕТ:", restart_btn: "ПЕРЕЗАГРУЗКА",
         ach_sniper: "СНАЙПЕР", ach_sniper_desc: "50 убийств лазером",
         ach_survivor: "ВЫЖИВШИЙ", ach_survivor_desc: "Пережить Черную Дыру",
         weapon_gun: "ПУЛЕМЕТ", weapon_laser: "ЛАЗЕР", weapon_shotgun: "ДРОБОВИК",
         loot_stored: "В ЗАПАС", loot_healed: "ЛЕЧЕНИЕ", loot_rockets: "РАКЕТЫ!", loot_laser: "ЛАЗЕР!", loot_minigun: "ПУЛЕМЕТ!", loot_shotgun: "ДРОБОВИК!",
-        level_complete: "УРОВЕНЬ ЗАЧИЩЕН", next_wave_ready: "СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ. ПРОГРЕСС СОХРАНЕН.", next_level_btn: "СЛЕДУЮЩИЙ УРОВЕНЬ",
+        loot_boss_core: "ЯДРО БОССА",
+        level_complete: "УРОВЕНЬ ЗАЧИЩЕН", next_wave_ready: "ЯДРО БОССА ПОЛУЧЕНО. СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ.", next_level_btn: "СЛЕДУЮЩИЙ УРОВЕНЬ",
         rage_ready: "ЯРОСТЬ ГОТОВА [R]"
     },
     en: {
@@ -62,7 +63,8 @@ const TRANSLATIONS = {
         ach_survivor: "SURVIVOR", ach_survivor_desc: "Survive a Black Hole",
         weapon_gun: "MINIGUN", weapon_laser: "LASER", weapon_shotgun: "SHOTGUN",
         loot_stored: "STORED", loot_healed: "HEALED", loot_rockets: "ROCKETS!", loot_laser: "LASER!", loot_minigun: "MINIGUN!", loot_shotgun: "SHOTGUN!",
-        level_complete: "LEVEL CLEARED", next_wave_ready: "SYSTEMS RECHARGED. MEDKITS RESET.", next_level_btn: "NEXT LEVEL",
+        loot_boss_core: "BOSS CORE",
+        level_complete: "LEVEL CLEARED", next_wave_ready: "BOSS CORE ACQUIRED. SYSTEMS RECHARGED.", next_level_btn: "NEXT LEVEL",
         rage_ready: "RAGE READY [R]"
     }
 };
@@ -85,7 +87,7 @@ function toggleLanguage() {
 // Глобальные
 let frameCount = 0;
 let bossTimer = 0;
-let bossDefeated = false; 
+let bossDefeated = false; // Флаг: Босс убит, не спавнить нового
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
 let currentStage = 1; 
@@ -202,6 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
+    // Загрузка звезд ПРИ СТАРТЕ
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -367,20 +370,25 @@ let drone = null;
 
 // --- ЛУТ ---
 class Loot {
-    // ПРАВКА: duration по умолчанию 600, если не передано
     constructor(x, y, type, duration = 600) { 
         this.x=x; this.y=y; this.type=type; 
         this.life = duration; 
         this.active=true; this.hoverOffset = 0; 
     }
     update() {
-        // Уменьшаем жизнь лута, если она не бесконечна
         if (this.life !== Infinity) this.life--;
-        
         this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
         
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; 
+            // ПРОВЕРКА ПОДБОРА ЯДРА БОССА -> ПОБЕДА
+            if (this.type === 'boss_core') {
+                sound.powerup();
+                currentState = STATE.LEVEL_COMPLETE;
+                document.getElementById('levelCompleteScreen').style.display='flex';
+                return;
+            }
+
             if(this.type === 'medkit') { 
                 if (player.hp < player.maxHp - 0.5) { player.heal(player.maxHp * 0.25); floatText.show(this.x, this.y, "+25% " + t("item_medkit"), "#00ff00"); } 
                 else { medkits++; sound.pickup(); floatText.show(this.x, this.y, t("loot_stored"), "#00ffff"); }
@@ -401,19 +409,23 @@ class Loot {
             else if(this.type === 'xp') { sound.pickup(); player.gainXp(10); }
             updateUI();
         }
-        
-        // Удаляем, если время вышло
         if(this.life <= 0) this.active = false;
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
-        // Мигание перед исчезновением (если не вечный)
-        if (this.life !== Infinity && this.life < 120 && Math.floor(frameCount / 4) % 2 === 0) {
-            ctx.globalAlpha = 0.5;
+        // Отрисовка ЯДРА БОССА
+        if (this.type === 'boss_core') {
+            const scale = 1 + Math.sin(frameCount * 0.1) * 0.1;
+            ctx.scale(scale, scale);
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00ff00';
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(-15, -15, 30, 30);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(-15, -15, 30, 30);
+            ctx.font = "bold 10px Arial"; ctx.fillStyle = '#000'; ctx.textAlign = "center"; 
+            ctx.fillText("CORE", 0, 4);
         }
-
-        if (this.type === 'machine_gun') {
+        else if (this.type === 'machine_gun') {
             ctx.shadowBlur=10; ctx.shadowColor='#00f3ff'; ctx.fillStyle = '#ccc'; ctx.fillRect(-8, -10, 16, 12);
             ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -8, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-4, -4, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(4, -4, 2, 0, Math.PI*2); ctx.fill();
             ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00f3ff'; ctx.textAlign = "center"; ctx.fillText(t('weapon_gun'), 0, 12);
@@ -613,16 +625,10 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // РИСУЕМ КАРТИНКУ
+        // РИСУЕМ КАРТИНКУ, ЕСЛИ ОНА ЗАГРУЖЕНА
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
-            // ДОБАВЛЕНО СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#00f3ff';
-            // УВЕЛИЧЕН РАЗМЕР КОРАБЛЯ ДО 80x80
-            ctx.drawImage(sprites.player, -40, -40, 80, 80);
-            ctx.shadowBlur = 0; // Сброс
+            ctx.drawImage(sprites.player, -32, -32, 64, 64);
         } else {
-            // Запасной вариант (треугольник)
             if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
             let strokeCol = this.color; let fillCol = '#050505';
             if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
@@ -790,19 +796,22 @@ function startGame() {
     document.getElementById('levelCompleteScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     
-    // Загрузка сохраненного этапа
+    // Скрываем контейнер босса при старте, чтобы полоска не висела
+    document.getElementById('bossContainer').style.display = 'none';
+    
+    // ПРАВКА: Загружаем сохраненный этап (не сбрасываем stars)
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
     if (isNaN(currentStage)) currentStage = 1;
 
     player.reset(); 
     enemies=[]; bullets=[]; enemyBullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
-    medkits=0; stars=0; scoreTime=0; killScore=0; bossActive=false; spawnInterval=90;
+    medkits=0; scoreTime=0; killScore=0; bossActive=false; spawnInterval=90;
+    bossDefeated = false; // Сброс флага
     
     // Таймер до босса (60 + 10 за каждый этап)
     bossTimer = (60 + (currentStage - 1) * 10) * 60; 
 
-    document.getElementById('bossContainer').style.display='none';
     document.getElementById('machineGunSlot').style.display='none';
     document.getElementById('damageOverlay').className = ''; 
     document.getElementById('bossWarningOverlay').classList.remove('boss-warning-active');
@@ -820,6 +829,7 @@ function startNextLevel() {
     medkits = 0; 
     enemies = []; bullets = []; enemyBullets = []; lootList = [];
     bossActive = false;
+    bossDefeated = false; // Сброс флага
     
     currentStage++;
     localStorage.setItem('neon_survivor_stage', currentStage); 
@@ -890,6 +900,7 @@ function animate() {
     if(currentState===STATE.LEVEL_COMPLETE) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         bg.draw();
+        // Разрешаем рисовать игрока и лут на фоне победы
         player.draw();
         lootList.forEach(l=>{l.update(); l.draw();}); 
         lootList=lootList.filter(l=>l.active);
@@ -905,7 +916,8 @@ function animate() {
     frameCount++;
     if (blackHoleTimer > 0) blackHoleTimer--;
 
-    if (!bossActive) {
+    // ПРАВКА: Если босс побежден (bossDefeated), таймер не идет
+    if (!bossActive && !bossDefeated) {
         bossTimer--;
         
         if (bossTimer <= 300 && bossTimer > 0) {
@@ -924,14 +936,15 @@ function animate() {
     }
     updateUI();
 
-    if(frameCount%60===0 && !bossActive) {
+    if(frameCount%60===0 && !bossActive && !bossDefeated) {
         if(blackHoleTimer <= 0 && Math.random() < 0.1) {
             blackHoles.push(new BlackHole());
             blackHoleTimer = 1200; 
         }
         scoreTime++;
     }
-    if(!bossActive && frameCount%spawnInterval===0 && enemies.length<MAX_ENEMIES) enemies.push(new Enemy());
+    // Спавн обычных врагов только если босс не активен и не побежден
+    if(!bossActive && !bossDefeated && frameCount%spawnInterval===0 && enemies.length<MAX_ENEMIES) enemies.push(new Enemy());
 
     const isLow = sound.checkHeartbeat(player.hp, player.maxHp);
     const overlay = document.getElementById('damageOverlay');
@@ -1009,6 +1022,7 @@ function killEnemy(e, idx, isLaserKill = false) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
+        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
@@ -1016,27 +1030,24 @@ function killEnemy(e, idx, isLaserKill = false) {
         else if(r < 0.87) lootList.push(new Loot(e.x,e.y,'laser_gun'));
         else if(r < 0.92) lootList.push(new Loot(e.x,e.y,'shotgun'));
     } 
-    // ЛУТ ДЛЯ БОССА (ИСПРАВЛЕНО!)
+    // ЛУТ ДЛЯ БОССА
     else if(e.boss) {
-        lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
-        // Выпадение кучи оружия
-        lootList.push(new Loot(e.x+20,e.y+20,'missile_pack'));
-        lootList.push(new Loot(e.x-20,e.y+20,'machine_gun'));
+        lootList.push(new Loot(e.x,e.y,'boss_core', Infinity)); // ЯДРО БОССА (Вечное)
+        lootList.push(new Loot(e.x,e.y,'mega_medkit', Infinity)); 
+        lootList.push(new Loot(e.x+20,e.y+20,'missile_pack', Infinity));
+        lootList.push(new Loot(e.x-20,e.y+20,'machine_gun', Infinity));
         
-        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*60-30),e.y+(Math.random()*60-30),'star'));
+        for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*60-30),e.y+(Math.random()*60-30),'star', Infinity));
         
         bossActive=false; 
+        bossDefeated = true; // ПРАВКА: Блокируем спавн босса
+        
         // ПРИНУДИТЕЛЬНОЕ СКРЫТИЕ ПОЛОСКИ ЗДОРОВЬЯ БОССА
         document.getElementById('bossContainer').style.display='none';
         
         sound.powerup(); 
         
-        // ЗАДЕРЖКА ПЕРЕД ПОБЕДОЙ (3 секунды, чтобы собрать лут)
-        setTimeout(() => {
-            if(currentState === STATE.PLAYING) { 
-                currentState = STATE.LEVEL_COMPLETE;
-                document.getElementById('levelCompleteScreen').style.display='flex';
-            }
-        }, 3000);
+        // Удаляем таймер и позволяем игроку играть
+        // Победа наступит только при поднятии ЯДРА
     }
 }
