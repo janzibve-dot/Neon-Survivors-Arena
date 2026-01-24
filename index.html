@@ -12,7 +12,6 @@
 
     <div class="scanlines"></div>
     <div id="damageOverlay"></div>
-    
     <div id="bossWarningOverlay">
         <div class="warning-text">⚠️ WARNING: BOSS APPROACHING ⚠️</div>
     </div>
@@ -58,10 +57,9 @@
             </div>
 
             <div class="dash-box score-box">
-                <span class="label">SCORE / BEST</span>
+                <span class="label">SCORE</span>
                 <div class="score-vals">
                     <span id="currentScore" class="val-text">0</span>
-                    <span id="bestScore" class="val-text small-best">HI: 0</span>
                 </div>
             </div>
 
@@ -117,10 +115,10 @@
         </div>
     </div>
 
-    <div id="levelCompleteScreen" class="screen" style="display: none; background: rgba(0,20,0,0.8);">
+    <div id="levelCompleteScreen" class="screen" style="display: none; background: rgba(0,20,0,0.9);">
         <div class="cyber-panel" style="border-color: #00ff00;">
             <h1 class="glitch-text" style="color:#00ff00;" data-lang="level_complete">УРОВЕНЬ ЗАЧИЩЕН</h1>
-            <p class="cyber-subtext" data-lang="next_wave_ready">СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ. ПРОГРЕСС СОХРАНЕН.</p>
+            <p class="cyber-subtext" data-lang="next_wave_ready">ЯДРО БОССА ПОЛУЧЕНО. СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ.</p>
             <button id="nextLevelBtn" class="cyber-button" style="color:#00ff00; border-color:#00ff00;" data-lang="next_level_btn">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
         </div>
     </div>
@@ -132,7 +130,7 @@
         </div>
     </div>
 
-    <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.95);">
+    <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.95); z-index: 200;">
         <div class="cyber-panel shop-panel">
             <div class="shop-header">
                 <h2 style="color:var(--cyber-yellow)" data-lang="shop_title">ОРУЖЕЙНАЯ</h2>
@@ -141,7 +139,7 @@
                 </div>
             </div>
             <div class="shop-grid" id="shopGrid"></div>
-            <button id="closeShopBtn" class="cyber-button" data-lang="close_btn">ЗАКРЫТЬ</button>
+            <button id="closeShopBtn" class="cyber-button" onclick="Shop.close()" data-lang="close_btn">ВЫХОД (ЗАКРЫТЬ)</button>
         </div>
     </div>
 
