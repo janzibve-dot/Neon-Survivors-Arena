@@ -14,7 +14,7 @@ const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4 };
 let currentState = STATE.MENU;
 
 // КОНСТАНТЫ
-const TOP_BOUND = 100; // Граница интерфейса
+const TOP_BOUND = 100;
 
 // Глобальные переменные
 let frameCount = 0;
@@ -30,34 +30,81 @@ const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
 
-// --- ЗВУКИ ---
+// --- ПРАВКА №1: ОПТИМИЗИРОВАННЫЙ ЗВУКОВОЙ ДВИЖОК (Без зависаний) ---
 class SoundManager {
-    constructor() { this.ctx = null; }
-    init() {
-        if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-        if (this.ctx.state === 'suspended') { this.ctx.resume(); }
+    constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.noiseBuffer = null; // Буфер для шума (генерируем 1 раз)
     }
-    playTone(freq, type, dur, vol=0.1) {
-        if(!this.ctx) return;
+
+    init() {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.2; 
+            this.masterGain.connect(this.ctx.destination);
+            
+            // Генерируем шум заранее, чтобы не грузить CPU во время боя
+            this.generateNoiseBuffer();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    generateNoiseBuffer() {
+        const duration = 2.0; // 2 секунды шума
+        const bufferSize = this.ctx.sampleRate * duration;
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+    }
+
+    playTone(freq, type, duration, vol = 1.0, slideFreq = null) {
+        if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        if (slideFreq) {
+            osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration);
+        }
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + dur);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(this.masterGain);
+        osc.start(); osc.stop(this.ctx.currentTime + duration);
     }
-    shoot() { this.playTone(400, 'square', 0.1, 0.05); }
-    machineGun() { this.playTone(300, 'square', 0.05, 0.05); } // Быстрый звук
-    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05); }
-    hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
-    pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
-    heal() { this.playTone(400, 'sine', 0.2, 0.1); }
-    powerup() { this.playTone(300, 'square', 0.3, 0.15); }
-    explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
-    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05); }
-    blackHoleBoom() { this.playTone(50, 'square', 1.0, 0.3); }
+
+    playNoise(duration, vol = 1.0) {
+        if (!this.ctx || !this.noiseBuffer) return;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        src.connect(gain); gain.connect(this.masterGain);
+        src.start(); src.stop(this.ctx.currentTime + duration);
+    }
+
+    // ЗВУКИ
+    shoot() { this.playTone(800, 'square', 0.1, 0.1, 300); }
+    machineGun() { this.playTone(400, 'square', 0.05, 0.08, 200); } 
+    enemyShoot() { this.playTone(150, 'sawtooth', 0.1, 0.05); } // Оптимизированный звук врага
+    hit() { this.playTone(100, 'sawtooth', 0.1, 0.2, 50); }
+    pickup() { this.playTone(1200, 'sine', 0.15, 0.1, 1800); }
+    heal() { this.playTone(400, 'sine', 0.3, 0.15, 600); }
+    powerup() { 
+        this.playTone(400, 'square', 0.1, 0.1);
+        setTimeout(() => this.playTone(600, 'square', 0.1, 0.1), 100);
+        setTimeout(() => this.playTone(800, 'square', 0.2, 0.1), 200);
+    }
+    explode() { this.playNoise(0.3, 0.3); } // Короткий шум для взрыва
+    blackHoleCharge() { this.playTone(100, 'sine', 0.1, 0.05, 50); }
+    blackHoleBoom() { this.playNoise(0.8, 0.5); }
 }
 const sound = new SoundManager();
 
@@ -156,7 +203,7 @@ let particles = [];
 class BlackHole {
     constructor() {
         this.x = Math.random() * (canvas.width - 100) + 50;
-        this.y = Math.random() * (canvas.height - TOP_BOUND - 100) + TOP_BOUND + 50; // Учет границы
+        this.y = Math.random() * (canvas.height - TOP_BOUND - 100) + TOP_BOUND + 50;
         this.maxLife = 420; this.life = this.maxLife;
         this.active = true; this.radius = 60; this.charge = 0; this.maxCharge = 180; 
     }
@@ -210,7 +257,7 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ (3D ИКОНКИ) ---
+// --- ЛУТ ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
@@ -231,8 +278,7 @@ class Loot {
             else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); }
             else if(this.type === 'star') { stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 STAR","#ffea00"); }
             else if(this.type === 'missile_pack') { 
-                // МГНОВЕННЫЙ ЗАПУСК 5 РАКЕТ
-                sound.powerup(); floatText.show(this.x,this.y,"MISSILE BARRAGE!", "#ffaa00");
+                sound.powerup(); floatText.show(this.x,this.y,"MISSILES!", "#ffaa00");
                 for(let i=0; i<5; i++) {
                     const t = findNearestEnemy(player.x, player.y);
                     if(t) missiles.push(new Missile(player.x, player.y, t));
@@ -240,7 +286,7 @@ class Loot {
             }
             else if(this.type === 'machine_gun') {
                 player.activateMachineGun();
-                sound.powerup(); floatText.show(this.x, this.y, "MINIGUN ACTIVE!", "#00ffff");
+                sound.powerup(); floatText.show(this.x, this.y, "MINIGUN!", "#00ffff");
             }
             else if(this.type === 'xp') { sound.pickup(); player.gainXp(10); }
             updateUI();
@@ -250,7 +296,27 @@ class Loot {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
-        if(this.type === 'medkit') {
+        // ПРАВКА №2: ИКОНКА ПУЛЕМЕТА
+        if (this.type === 'machine_gun') {
+            ctx.shadowBlur=15; ctx.shadowColor='#00f3ff';
+            // Корпус (серебро)
+            ctx.fillStyle = '#ccc';
+            ctx.fillRect(-8, -10, 16, 12);
+            // Стволы (черные круги)
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(0, -8, 2, 0, Math.PI*2); ctx.fill(); // Верхний
+            ctx.beginPath(); ctx.arc(-4, -4, 2, 0, Math.PI*2); ctx.fill(); // Левый
+            ctx.beginPath(); ctx.arc(4, -4, 2, 0, Math.PI*2); ctx.fill(); // Правый
+            // Ручки
+            ctx.strokeStyle = '#fff'; ctx.lineWidth=2;
+            ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-12, -6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(12, -6); ctx.stroke();
+            
+            // Подпись
+            ctx.font = "bold 9px Arial"; ctx.fillStyle = '#00f3ff'; ctx.textAlign = "center"; 
+            ctx.fillText("GUN", 0, 12);
+        }
+        else if(this.type === 'medkit') {
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
             ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
             ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); 
@@ -274,17 +340,8 @@ class Loot {
             ctx.closePath(); ctx.fill();
         } 
         else if(this.type === 'missile_pack') {
-            // КУЧА РАКЕТ
-            ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = '#000'; ctx.font = "bold 14px Arial"; ctx.textAlign = "center"; ctx.fillText("x5", 0, 5);
-        } 
-        else if (this.type === 'machine_gun') {
-            // ПУЛЕМЕТ (ГАТЛИНГ)
-            ctx.shadowBlur=10; ctx.shadowColor='#00f3ff';
-            ctx.fillStyle = '#00f3ff';
-            ctx.fillRect(-10, -5, 20, 10); // Стволы
-            ctx.fillStyle = '#333'; ctx.fillRect(-12, -8, 6, 16); // Корпус
         }
         else {
             ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
@@ -358,7 +415,6 @@ const player = {
         if(keys['KeyS'] || keys['ArrowDown']) this.y += 5;
         if(keys['KeyA'] || keys['ArrowLeft']) this.x -= 5;
         if(keys['KeyD'] || keys['ArrowRight']) this.x += 5;
-        // Ограничение с учетом барьера TOP_BOUND
         this.x = Math.max(30, Math.min(canvas.width-30, this.x));
         this.y = Math.max(TOP_BOUND + 30, Math.min(canvas.height-30, this.y));
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
@@ -368,7 +424,6 @@ const player = {
         if(this.hitTimer>0) this.hitTimer--;
         if(this.invulnTimer>0) this.invulnTimer--;
         
-        // Логика пулемета
         if(this.machineGunTimer > 0) {
             this.machineGunTimer--;
             if(this.machineGunTimer <= 0) {
@@ -383,9 +438,9 @@ const player = {
         if(isMouseDown) this.shoot();
     },
     activateMachineGun() {
-        this.machineGunTimer = 600; // 10 секунд
-        this.fireRate = 3; // Очень быстро
-        this.dmg = 15; // Мощнее
+        this.machineGunTimer = 600; 
+        this.fireRate = 3; 
+        this.dmg = 15; 
         document.getElementById('machineGunSlot').style.display = 'flex';
     },
     shoot() {
@@ -446,7 +501,6 @@ const player = {
             ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
         }
         ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
-        // Отрисовка TIE Silencer
         ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
@@ -481,12 +535,11 @@ class Enemy {
         }
         else {
             const rand = Math.random(); const edge = Math.floor(Math.random()*4);
-            if(edge==0){this.x=Math.random()*canvas.width;this.y=TOP_BOUND-30;} // Сверху
+            if(edge==0){this.x=Math.random()*canvas.width;this.y=TOP_BOUND-30;}
             else if(edge==1){this.x=canvas.width+30;this.y=Math.random()*canvas.height;}
             else if(edge==2){this.x=Math.random()*canvas.width;this.y=canvas.height+30;}
             else{this.x=-30;this.y=Math.random()*canvas.height;}
 
-            // Убеждаемся, что не спавнимся прямо в барьере
             if (this.y < TOP_BOUND) this.y = TOP_BOUND - 30;
 
             if(rand < 0.2) { 
@@ -530,7 +583,6 @@ class Enemy {
         else {
             const a = Math.atan2(player.y-this.y, player.x-this.x);
             this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
-            // Ограничение, чтобы враги не залетали на HUD
             if(this.y < TOP_BOUND + this.r) this.y = TOP_BOUND + this.r;
             this.angle = a;
         }
@@ -712,16 +764,18 @@ function animate() {
     floatText.updateAndDraw();
 }
 
+// ПРАВКА №3: БАЛАНС ЛУТА
 function killEnemy(e, idx) {
     enemies.splice(idx,1); killScore+=e.boss?1000:100;
     
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
-        if(r < 0.20) lootList.push(new Loot(e.x+10,e.y,'medkit')); // 20%
-        else if(r < 0.45) lootList.push(new Loot(e.x-10,e.y,'star')); // 25%
-        else if(r < 0.50) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); // 5%
-        else if(r < 0.55) lootList.push(new Loot(e.x,e.y-10,'missile_pack')); // 5%
+        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
+        if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
+        else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
+        else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
+        else if(r < 0.82) lootList.push(new Loot(e.x,e.y-10,'missile_pack'));
     } 
     else if(e.boss) {
         lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
