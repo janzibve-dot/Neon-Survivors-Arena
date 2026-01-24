@@ -15,9 +15,14 @@ let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
 
-// --- ЗАГРУЗКА СПРАЙТОВ ---
-const sprites = { player: new Image() };
-sprites.player.src = 'assets/images/player.png'; 
+// --- ЗАГРУЗКА СПРАЙТОВ (КАРТИНОК) ---
+const sprites = {
+    player: new Image(),
+    boss: new Image() // Добавили слот для картинки босса
+};
+sprites.player.src = 'assets/images/player.png';
+// Указываем путь к картинке босса
+sprites.boss.src = 'assets/images/boss.png';
 
 // --- ЛОКАЛИЗАЦИЯ ---
 let currentLang = 'ru';
@@ -330,9 +335,6 @@ class BlackHole {
         const chargePct = this.charge / this.maxCharge;
         if(chargePct > 0) { ctx.fillStyle = '#00ffff'; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(0, 0, (this.radius - 5) * chargePct, 0, Math.PI*2); ctx.fill(); }
         ctx.restore();
-        ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-        if (this.charge > 0) { ctx.fillStyle = '#00ffff'; ctx.fillText(((this.maxCharge - this.charge)/60).toFixed(1), this.x, this.y - this.radius - 10); } 
-        else { ctx.fillStyle = '#ff0055'; ctx.fillText((this.life/60).toFixed(1), this.x, this.y - this.radius - 10); }
     }
 }
 let blackHoles = [];
@@ -707,29 +709,54 @@ class Enemy {
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y);
-        ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
-        if(this.type.includes('boss')) { 
-            ctx.rotate(this.angle); 
-            if (this.type === 'tank_boss') {
-                ctx.fillStyle = '#003300';
-                ctx.fillRect(-60, -60, 120, 120); ctx.strokeRect(-60, -60, 120, 120);
-                ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
-            } else if (this.type === 'ninja_boss') {
-                ctx.fillStyle = '#220033';
-                ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-30, 30); ctx.lineTo(-30, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        if(this.type.includes('boss')) {
+            ctx.rotate(this.angle);
+
+            // --- РИСУЕМ КАРТИНКУ БОССА ---
+            // Проверяем, загрузилась ли картинка
+            if (sprites.boss && sprites.boss.complete && sprites.boss.naturalWidth > 0) {
+                // Добавляем свечение в зависимости от типа босса
+                if (this.type === 'tank_boss') ctx.shadowColor = '#00ff00';
+                else if (this.type === 'ninja_boss') ctx.shadowColor = '#9d00ff';
+                else ctx.shadowColor = '#ff0033';
+                ctx.shadowBlur = 30;
+
+                // Рисуем картинку. Размер берем из радиуса босса (this.r)
+                // Картинка должна быть квадратной и смотреть вправо.
+                const size = this.r * 2.5; // Немного увеличим для визуального эффекта
+                ctx.drawImage(sprites.boss, -size/2, -size/2, size, size);
+
+                ctx.shadowBlur = 0; // Сброс свечения
             } else {
-                ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
+                // --- ЕСЛИ КАРТИНКА НЕ ЗАГРУЗИЛАСЬ - РИСУЕМ ФИГУРЫ (СТАРЫЙ КОД) ---
+                ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
+                if (this.type === 'tank_boss') {
+                    ctx.fillStyle = '#003300';
+                    ctx.fillRect(-60, -60, 120, 120); ctx.strokeRect(-60, -60, 120, 120);
+                    ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
+                } else if (this.type === 'ninja_boss') {
+                    ctx.fillStyle = '#220033';
+                    ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-30, 30); ctx.lineTo(-30, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+                } else {
+                    ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
+                }
             }
         }
-        else if(this.type === 'kamikaze') {
-            ctx.rotate(frameCount * 0.2); ctx.fillStyle = '#550000'; ctx.beginPath(); for(let i=0; i<8; i++) { ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4)); ctx.lineTo((this.r+5)*Math.cos((i+0.5)*Math.PI/4), (this.r+5)*Math.sin((i+0.5)*Math.PI/4)); } ctx.closePath(); ctx.fill(); ctx.stroke();
+        else {
+            // Стиль для обычных врагов
+            ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
+            
+            if(this.type === 'kamikaze') {
+                ctx.rotate(frameCount * 0.2); ctx.fillStyle = '#550000'; ctx.beginPath(); for(let i=0; i<8; i++) { ctx.lineTo(this.r*Math.cos(i*Math.PI/4), this.r*Math.sin(i*Math.PI/4)); ctx.lineTo((this.r+5)*Math.cos((i+0.5)*Math.PI/4), (this.r+5)*Math.sin((i+0.5)*Math.PI/4)); } ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+            else if(this.type === 'defender') { ctx.rotate(this.angleOffset); ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,10); ctx.lineTo(-10,0); ctx.lineTo(0,-10); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+            else if(this.type === 'tank') { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeRect(-10, -8, 10, 16); }
+            else if(this.type === 'runner') { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+            else { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-15, 15); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-15, -15); ctx.stroke(); }
         }
-        else if(this.type === 'defender') { ctx.rotate(this.angleOffset); ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,10); ctx.lineTo(-10,0); ctx.lineTo(0,-10); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-        else if(this.type === 'tank') { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeRect(-10, -8, 10, 16); }
-        else if(this.type === 'runner') { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-        else { ctx.rotate(this.angle); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-15, 15); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-15, -15); ctx.stroke(); }
         ctx.restore();
     }
 }
