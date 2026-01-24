@@ -10,24 +10,8 @@ const SHIPS = [
 const Shop = {
     getPurchased: function() { const stored = localStorage.getItem('ns_purchased_ships'); return stored ? JSON.parse(stored) : ['standard']; },
     getEquipped: function() { return localStorage.getItem('ns_equipped_ship') || 'standard'; },
-    
-    // ОТКРЫТИЕ С ПАУЗОЙ
-    open: function() { 
-        if (typeof currentState !== 'undefined' && currentState === STATE.PLAYING) { 
-            currentState = STATE.PAUSE; // Ставим игру на паузу
-        } 
-        document.getElementById('shopModal').style.display = 'flex'; 
-        this.render(); 
-    },
-    
-    // ЗАКРЫТИЕ И ВОЗВРАТ В ИГРУ
-    close: function() { 
-        document.getElementById('shopModal').style.display = 'none'; 
-        if (typeof currentState !== 'undefined' && currentState === STATE.PAUSE) { 
-            currentState = STATE.PLAYING; // Снимаем с паузы
-        } 
-    },
-
+    open: function() { if (typeof togglePause === 'function' && currentState === STATE.PLAYING) { currentState = STATE.PAUSE; } document.getElementById('shopModal').style.display = 'flex'; this.render(); },
+    close: function() { document.getElementById('shopModal').style.display = 'none'; if (currentState === STATE.PAUSE) { currentState = STATE.PLAYING; } },
     render: function() {
         const grid = document.getElementById('shopGrid'); const purchased = this.getPurchased(); const equipped = this.getEquipped();
         document.getElementById('shopStars').innerText = stars; grid.innerHTML = '';
