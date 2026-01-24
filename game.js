@@ -85,13 +85,14 @@ function toggleLanguage() {
 // Глобальные
 let frameCount = 0;
 let bossTimer = 0;
+let bossDefeated = false; 
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
 let currentStage = 1; 
 let spawnInterval = 90;
 const MAX_ENEMIES = 50; 
 let medkits = 0;
-let stars = 0;
+let stars = 0; 
 let laserKills = 0;
 let achievements = [];
 let blackHoleTimer = 0; 
@@ -338,7 +339,7 @@ class BlackHole {
 }
 let blackHoles = [];
 
-// --- ДРОН (НОВОЕ) ---
+// --- ДРОН ---
 class Drone {
     constructor() {
         this.angle = 0; this.radius = 60; this.shootTimer = 0;
@@ -351,9 +352,8 @@ class Drone {
         if(this.shootTimer <= 0) {
             const target = findNearestEnemy(this.x, this.y);
             if(target) {
-                // Стреляет маленьким лазером
                 bullets.push(new Bullet(this.x, this.y, Math.atan2(target.y-this.y, target.x-this.x), 5, false, true));
-                this.shootTimer = 60; // 1 выстрел в сек
+                this.shootTimer = 60; 
             }
         }
     }
@@ -365,10 +365,20 @@ class Drone {
 }
 let drone = null;
 
+// --- ЛУТ ---
 class Loot {
-    constructor(x, y, type) { this.x=x; this.y=y; this.type=type; this.life = 600; this.active=true; this.hoverOffset = 0; }
+    // ПРАВКА: duration по умолчанию 600, если не передано
+    constructor(x, y, type, duration = 600) { 
+        this.x=x; this.y=y; this.type=type; 
+        this.life = duration; 
+        this.active=true; this.hoverOffset = 0; 
+    }
     update() {
-        this.life--; this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
+        // Уменьшаем жизнь лута, если она не бесконечна
+        if (this.life !== Infinity) this.life--;
+        
+        this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
+        
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; 
             if(this.type === 'medkit') { 
@@ -378,7 +388,7 @@ class Loot {
             else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y, t("loot_healed"),"#00ff00"); }
             else if(this.type === 'star') { 
                 stars++; 
-                localStorage.setItem('neon_survivor_stars', stars); // СОХРАНЯЕМ ЗВЕЗДЫ ПРИ ПОДБОРЕ
+                localStorage.setItem('neon_survivor_stars', stars);
                 sound.pickup(); floatText.show(this.x,this.y,"+1 " + t("item_stars"),"#ffea00"); 
             }
             else if(this.type === 'missile_pack') { 
@@ -391,10 +401,18 @@ class Loot {
             else if(this.type === 'xp') { sound.pickup(); player.gainXp(10); }
             updateUI();
         }
-        if(this.life<=0) this.active = false;
+        
+        // Удаляем, если время вышло
+        if(this.life <= 0) this.active = false;
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
+        
+        // Мигание перед исчезновением (если не вечный)
+        if (this.life !== Infinity && this.life < 120 && Math.floor(frameCount / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+
         if (this.type === 'machine_gun') {
             ctx.shadowBlur=10; ctx.shadowColor='#00f3ff'; ctx.fillStyle = '#ccc'; ctx.fillRect(-8, -10, 16, 12);
             ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -8, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-4, -4, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(4, -4, 2, 0, Math.PI*2); ctx.fill();
@@ -595,16 +613,16 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
-        // РИСУЕМ КАРТИНКУ ИГРОКА
+        // РИСУЕМ КАРТИНКУ
         if (sprites.player && sprites.player.complete && sprites.player.naturalWidth > 0) {
-            // СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
+            // ДОБАВЛЕНО СИНЕЕ НЕОНОВОЕ СВЕЧЕНИЕ
             ctx.shadowBlur = 20;
             ctx.shadowColor = '#00f3ff';
-            // УВЕЛИЧЕННЫЙ РАЗМЕР
+            // УВЕЛИЧЕН РАЗМЕР КОРАБЛЯ ДО 80x80
             ctx.drawImage(sprites.player, -40, -40, 80, 80);
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = 0; // Сброс
         } else {
-            // ФОЛБЭК (Треугольник)
+            // Запасной вариант (треугольник)
             if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
             let strokeCol = this.color; let fillCol = '#050505';
             if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
@@ -772,9 +790,7 @@ function startGame() {
     document.getElementById('levelCompleteScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     
-    // Скрываем контейнер босса при старте, чтобы полоска не висела
-    document.getElementById('bossContainer').style.display = 'none';
-    
+    // Загрузка сохраненного этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
     if (isNaN(currentStage)) currentStage = 1;
@@ -786,6 +802,7 @@ function startGame() {
     // Таймер до босса (60 + 10 за каждый этап)
     bossTimer = (60 + (currentStage - 1) * 10) * 60; 
 
+    document.getElementById('bossContainer').style.display='none';
     document.getElementById('machineGunSlot').style.display='none';
     document.getElementById('damageOverlay').className = ''; 
     document.getElementById('bossWarningOverlay').classList.remove('boss-warning-active');
