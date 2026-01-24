@@ -4,6 +4,7 @@
     --cyber-magenta: #ff00ff;
     --cyber-red: #ff0033; 
     --cyber-yellow: #ffea00;
+    --cyber-orange: #ffaa00;
     --font-header: 'Orbitron', sans-serif;
     --font-tech: 'Share Tech Mono', monospace;
 }
@@ -26,7 +27,117 @@ canvas { display: block; cursor: crosshair; }
     box-shadow: inset 0 0 100px var(--cyber-red); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
 }
 
-/* --- ВЫВЕСКА RETRO GAMES (КРАСНАЯ) --- */
+/* --- HUD (ВЕРХНЯЯ ПАНЕЛЬ) --- */
+#ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
+
+#top-dashboard {
+    position: absolute; top: 20px; left: 20px; right: 20px; height: 80px;
+    display: flex; align-items: center; justify-content: space-between;
+    pointer-events: auto; gap: 15px;
+}
+
+/* Общий стиль блоков HUD */
+.dash-box {
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #333;
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    height: 100%; box-sizing: border-box;
+}
+
+.label { font-size: 10px; color: #888; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; }
+.val-text { font-family: var(--font-header); font-weight: 900; color: #fff; }
+
+/* УРОВЕНЬ */
+.level-box { border-color: var(--cyber-cyan); box-shadow: 0 0 15px var(--cyber-cyan); min-width: 80px; }
+.big-num { font-size: 32px; color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan); }
+.xp-bar-thick { width: 100%; height: 6px; background: #222; margin-top: 5px; border-radius: 3px; }
+.xp-bar-thick .fill { height: 100%; background: var(--cyber-cyan); width: 0%; box-shadow: 0 0 5px var(--cyber-cyan); }
+
+/* ВРЕМЯ */
+.time-box { min-width: 80px; border-color: #fff; }
+.highlight { font-size: 24px; color: var(--cyber-yellow); }
+
+/* БОНУСЫ (РАМКИ) */
+.loot-container { display: flex; gap: 15px; }
+
+.res-slot {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 15px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid #555;
+    transition: transform 0.2s;
+    min-width: 100px;
+}
+.res-slot:hover { transform: scale(1.05); }
+
+/* Неоновые рамки для бонусов */
+.frame-red { border-color: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red), inset 0 0 10px rgba(255, 0, 51, 0.2); }
+.frame-yellow { border-color: var(--cyber-yellow); box-shadow: 0 0 10px var(--cyber-yellow), inset 0 0 10px rgba(255, 234, 0, 0.2); }
+.frame-orange { border-color: var(--cyber-orange); box-shadow: 0 0 10px var(--cyber-orange), inset 0 0 10px rgba(255, 170, 0, 0.2); }
+
+.res-slot .icon { font-size: 24px; filter: drop-shadow(0 0 5px currentColor); }
+.frame-red .icon { color: var(--cyber-red); }
+.frame-yellow .icon { color: var(--cyber-yellow); }
+.frame-orange .icon { color: var(--cyber-orange); }
+
+.res-info { display: flex; flex-direction: column; }
+.res-info span:first-child { font-weight: 900; font-size: 20px; color: #fff; }
+.res-name { font-size: 9px; color: #aaa; font-weight: bold; letter-spacing: 1px; }
+
+/* ЗДОРОВЬЕ (ЖИРНОЕ) */
+.hp-box { min-width: 200px; border-color: var(--cyber-red); box-shadow: 0 0 15px var(--cyber-red); }
+.hp-bar-thick { 
+    width: 100%; height: 20px; /* Жирная шкала */
+    background: #330000; 
+    border: 1px solid #550000;
+    position: relative; margin-bottom: 5px;
+    box-shadow: inset 0 0 10px #000;
+}
+.hp-bar-thick .fill { 
+    height: 100%; background: linear-gradient(90deg, #ff0000, #ff5555); 
+    width: 100%; transition: width 0.2s; 
+    box-shadow: 0 0 15px var(--cyber-red);
+}
+.hp-num { font-size: 14px; font-weight: bold; color: #fff; }
+
+/* КНОПКА МАГАЗИНА */
+.shop-btn-box { 
+    cursor: pointer; border-color: #fff; transition: 0.2s; 
+    background: linear-gradient(45deg, #222, #444);
+}
+.shop-btn-box:hover { background: #fff; color: #000; box-shadow: 0 0 20px #fff; }
+.shop-btn-box .icon { font-size: 24px; margin-bottom: 0; }
+.shop-btn-box:hover .label { color: #000; }
+
+/* МАГАЗИН (ОКНО) */
+.shop-panel { 
+    width: 600px; height: 400px; 
+    border: 4px solid var(--cyber-yellow); 
+    box-shadow: 0 0 50px var(--cyber-yellow);
+}
+
+/* БОСС БАР */
+#bossContainer { position: absolute; top: 110px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; }
+.boss-label { color: var(--cyber-red); font-weight: bold; animation: flashText 0.5s infinite alternate; font-size: 20px; margin-bottom: 5px; text-shadow: 0 0 10px var(--cyber-red); }
+.tech-bar-container { height: 25px; background: #110000; border: 2px solid var(--cyber-red); width: 100%; box-shadow: 0 0 20px var(--cyber-red); }
+.boss-fill { height: 100%; background: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red); }
+
+/* ЭКРАНЫ */
+.screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: #020205; z-index: 50;
+}
+.cyber-panel { border: 1px solid var(--cyber-cyan); background: rgba(5, 5, 10, 0.95); padding: 30px; text-align: center; }
+.upgrade-card { background: #111; border: 1px solid #333; padding: 15px; margin: 10px; width: 180px; cursor: pointer; transition: 0.2s; }
+.upgrade-card:hover { border-color: var(--cyber-yellow); transform: translateY(-5px); }
+.alert-text { color: var(--cyber-red); font-size: 3rem; margin: 0; }
+
+/* ВЫВЕСКА */
 .retro-sign {
     font-family: var(--font-header); font-size: 8rem; font-weight: 900;
     color: rgba(255, 255, 255, 0.8);
@@ -42,67 +153,14 @@ canvas { display: block; cursor: crosshair; }
     0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 20px var(--cyber-red); color: #fff; }
     20%, 24%, 55% { opacity: 0.4; text-shadow: none; color: #550000; }
 }
+@keyframes flashText { from { opacity: 0.5; } to { opacity: 1; } }
 
-/* --- ЭКРАНЫ --- */
-.screen {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    background: #020205; z-index: 50;
-}
 .game-title { font-size: 2rem; color: var(--cyber-cyan); margin-bottom: 30px; letter-spacing: 5px; opacity: 0.8; }
-
-.controls-box {
-    background: rgba(20, 0, 0, 0.8); border: 2px solid var(--cyber-red);
-    padding: 20px 40px; width: 500px; margin-bottom: 30px;
-    box-shadow: 0 0 20px rgba(255, 0, 51, 0.2);
-}
+.controls-box { background: rgba(20, 0, 0, 0.8); border: 2px solid var(--cyber-red); padding: 20px 40px; width: 500px; margin-bottom: 30px; box-shadow: 0 0 20px rgba(255, 0, 51, 0.2); }
 .controls-box h3 { color: var(--cyber-red); text-align: center; margin: 0 0 15px 0; }
 .info-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 5px 0; }
 .key { color: var(--cyber-yellow); font-weight: bold; }
 .desc { color: #ccc; }
-.cyber-line { border: 0; height: 1px; background: var(--cyber-red); margin: 15px 0; opacity: 0.5; }
-
-.big-btn {
-    font-size: 24px; padding: 20px 60px; background: var(--cyber-red); color: #fff; 
-    border: 2px solid #fff; box-shadow: 0 0 15px var(--cyber-red); cursor: pointer;
-}
+.big-btn { font-size: 24px; padding: 20px 60px; background: var(--cyber-red); color: #fff; border: 2px solid #fff; box-shadow: 0 0 15px var(--cyber-red); cursor: pointer; }
 .big-btn:hover { background: #fff; color: var(--cyber-red); box-shadow: 0 0 40px var(--cyber-red); }
-
-.cyber-button {
-    padding: 15px 30px; font-family: var(--font-header); font-weight: bold;
-    border: none; cursor: pointer; text-transform: uppercase;
-    clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); margin-top: 20px;
-}
-
-/* --- HUD --- */
-#ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
-#top-dashboard {
-    position: absolute; top: 0; left: 0; width: 100%; height: 60px;
-    background: rgba(10, 10, 18, 0.9); border-bottom: 1px solid var(--cyber-cyan);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 30px; box-sizing: border-box; pointer-events: auto;
-}
-.dash-group { display: flex; align-items: center; gap: 10px; font-size: 18px; }
-.label { color: #555; font-size: 12px; font-weight: bold; }
-.val-text { font-weight: bold; font-size: 20px; }
-.highlight { color: var(--cyber-yellow); }
-.loot-display { gap: 20px; border-left: 1px solid #333; border-right: 1px solid #333; padding: 0 20px; }
-.res-slot { display: flex; align-items: center; gap: 5px; font-weight: bold; font-size: 18px; }
-.icon { font-size: 20px; }
-
-.xp-bar-mini { width: 100px; height: 6px; background: #222; }
-.xp-bar-mini .fill { height: 100%; background: var(--cyber-cyan); width: 0%; transition: width 0.2s; }
-.hp-bar-mini { width: 150px; height: 10px; background: #222; position: relative; }
-.hp-bar-mini .fill { height: 100%; background: var(--cyber-red); width: 100%; transition: width 0.2s; }
-.hp-num { font-size: 14px; min-width: 60px; text-align: right; }
-
-#bossContainer { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 500px; text-align: center; }
-.boss-label { color: var(--cyber-red); font-weight: bold; animation: flashText 0.5s infinite alternate; }
-.tech-bar-container { height: 15px; background: #000; border: 1px solid var(--cyber-red); width: 100%; }
-.boss-fill { height: 100%; background: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red); }
-
-.cyber-panel { border: 1px solid var(--cyber-cyan); background: rgba(5, 5, 10, 0.95); padding: 30px; text-align: center; }
-.upgrade-card { background: #111; border: 1px solid #333; padding: 15px; margin: 10px; width: 180px; cursor: pointer; transition: 0.2s; }
-.upgrade-card:hover { border-color: var(--cyber-yellow); transform: translateY(-5px); }
-.alert-text { color: var(--cyber-red); font-size: 3rem; margin: 0; }
-@keyframes flashText { from { opacity: 0.5; } to { opacity: 1; } }
+.cyber-button { padding: 15px 30px; font-family: var(--font-header); font-weight: bold; border: none; cursor: pointer; text-transform: uppercase; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); margin-top: 20px; }
