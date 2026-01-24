@@ -59,11 +59,22 @@ const sound = new SoundManager();
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 window.onload = function() {
+    // Кнопка СТАРТ
     const startBtn = document.getElementById('startBtn');
-    if(startBtn) {
-        startBtn.onclick = () => { sound.init(); startGame(); };
-    }
-    document.getElementById('resumeBtn').onclick = togglePause;
+    if(startBtn) startBtn.onclick = () => { sound.init(); startGame(); };
+
+    // Кнопка ПРОДОЛЖИТЬ (Пауза)
+    const resumeBtn = document.getElementById('resumeBtn');
+    if(resumeBtn) resumeBtn.onclick = togglePause;
+
+    // Кнопка ПЕРЕЗАГРУЗКА (В окне смерти)
+    // Мы ищем кнопку внутри gameOverScreen. Если у тебя в HTML кнопка с onclick="location.reload()",
+    // этот код ниже просто для надежности, если ты убрал inline-js.
+    const restartBtns = document.querySelectorAll('#gameOverScreen .cyber-button');
+    restartBtns.forEach(btn => {
+        btn.onclick = () => location.reload();
+    });
+
     animate(); 
 };
 
@@ -71,7 +82,7 @@ window.addEventListener('keydown', e => {
     keys[e.code] = true; keys[e.key] = true;
     if ((e.code === 'Escape' || e.code === 'KeyP') && currentState === STATE.PLAYING) togglePause();
     
-    // Активация аптечки кнопкой 1 (из запаса)
+    // Аптечка [1]
     if (e.key === '1' && currentState === STATE.PLAYING) {
         if (medkits > 0 && player.hp < player.maxHp) {
             medkits--;
@@ -143,17 +154,17 @@ class Particle {
 }
 let particles = [];
 
-// --- ЧЕРНАЯ ДЫРА (С ТАЙМЕРОМ) ---
+// --- ЧЕРНАЯ ДЫРА ---
 class BlackHole {
     constructor() {
         this.x = Math.random() * (canvas.width - 100) + 50;
         this.y = Math.random() * (canvas.height - 100) + 50;
-        this.maxLife = 420; // 7 секунд
+        this.maxLife = 420; 
         this.life = this.maxLife;
         this.active = true;
         this.radius = 60;
         this.charge = 0; 
-        this.maxCharge = 180; // 3 секунды
+        this.maxCharge = 180; 
     }
     update() {
         if (!this.active) return;
@@ -161,26 +172,22 @@ class BlackHole {
         const dist = Math.hypot(player.x - this.x, player.y - this.y);
         
         if (dist < this.radius) {
-            // Игрок внутри: Заряжаем взрыв, жизнь дыры не тратится
             this.charge++;
-            this.life = this.maxLife; // Сброс таймера исчезновения, пока стоим внутри
+            this.life = this.maxLife; // Сброс таймера исчезновения
             
             if (frameCount % 15 === 0) sound.blackHoleCharge();
             particles.push(new Particle(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, '#00ffff'));
             
             if (this.charge >= this.maxCharge) this.explode();
         } else {
-            // Игрок снаружи: Жизнь уходит, заряд падает
             this.life--;
             if (this.charge > 0) this.charge = Math.max(0, this.charge - 2); 
-            
             if (this.life <= 0) this.active = false;
         }
     }
     explode() {
         this.active = false;
         sound.blackHoleBoom();
-        // Урон всем
         enemies.forEach((e, idx) => {
             if (e.isBoss) {
                 e.hp -= 800; floatText.show(e.x, e.y, "-800 CRIT", "#ff00ff");
@@ -188,7 +195,6 @@ class BlackHole {
                 e.hp = 0; particles.push(new Particle(e.x, e.y, '#ff0000')); killEnemy(e, idx);
             }
         });
-        // Эффект
         for(let i=0; i<60; i++) particles.push(new Particle(this.x, this.y, '#ffffff'));
         floatText.show(this.x, this.y, "VOID BURST!", "#ffffff");
     }
@@ -198,13 +204,11 @@ class BlackHole {
         ctx.save(); ctx.translate(this.x, this.y);
         const rot = frameCount * 0.1; ctx.rotate(rot);
         
-        // Визуал дыры
         ctx.strokeStyle = '#990099'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.stroke();
         ctx.fillStyle = '#110011';
         ctx.beginPath(); ctx.arc(0, 0, this.radius - 5, 0, Math.PI*2); ctx.fill();
         
-        // Зарядка (синий круг)
         const chargePct = this.charge / this.maxCharge;
         if(chargePct > 0) {
             ctx.fillStyle = '#00ffff'; ctx.globalAlpha = 0.6;
@@ -214,28 +218,23 @@ class BlackHole {
 
         // ТАЙМЕРЫ
         ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-        
         if (this.charge > 0) {
-            // Таймер до взрыва
             const secLeft = ((this.maxCharge - this.charge) / 60).toFixed(1);
-            ctx.fillStyle = '#00ffff';
-            ctx.fillText(`DETONATE: ${secLeft}`, this.x, this.y - this.radius - 15);
+            ctx.fillStyle = '#00ffff'; ctx.fillText(`DETONATE: ${secLeft}`, this.x, this.y - this.radius - 15);
         } else {
-            // Таймер жизни
             const secLife = (this.life / 60).toFixed(1);
-            ctx.fillStyle = '#ff0055';
-            ctx.fillText(`CLOSE IN: ${secLife}`, this.x, this.y - this.radius - 15);
+            ctx.fillStyle = '#ff0055'; ctx.fillText(`VANISH: ${secLife}`, this.x, this.y - this.radius - 15);
         }
     }
 }
 let blackHoles = [];
 
 
-// --- ЛУТ (ИКОНКИ) ---
+// --- ЛУТ ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        this.life = 600; // 10 секунд
+        this.life = 600; 
         this.active=true; 
         this.hoverOffset = 0;
     }
@@ -246,22 +245,16 @@ class Loot {
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; 
             
-            // ЛОГИКА ПОДБОРА
             if(this.type === 'medkit') { 
-                // Умная аптечка
-                if (player.hp < player.maxHp - 0.5) { // Если хоть чуть-чуть ранен
+                if (player.hp < player.maxHp - 0.5) {
                     player.heal(player.maxHp * 0.25);
                     floatText.show(this.x, this.y, "+25% HP", "#00ff00");
                 } else {
-                    medkits++;
-                    sound.pickup();
-                    floatText.show(this.x, this.y, "STORED", "#00ffff");
+                    medkits++; sound.pickup(); floatText.show(this.x, this.y, "STORED", "#00ffff");
                 }
             }
             else if(this.type === 'mega_medkit') { 
-                player.heal(9999); // Полное лечение
-                sound.powerup(); 
-                floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); 
+                player.heal(9999); sound.powerup(); floatText.show(this.x,this.y,"FULL HEAL","#00ff00"); 
             }
             else if(this.type === 'star') { 
                 stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 STAR","#ffea00"); 
@@ -280,12 +273,12 @@ class Loot {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
         if(this.type === 'medkit') {
-            // Чемоданчик
-            ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
+            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); 
             ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); 
             ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); 
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); 
+            ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
+            ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); 
             ctx.shadowBlur = 0;
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; ctx.fillText("HP", 0, -22);
         } 
@@ -296,7 +289,6 @@ class Loot {
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
-            // Звезда
             const pulse = 1 + Math.sin(frameCount * 0.2) * 0.2;
             ctx.scale(pulse, pulse);
             ctx.shadowBlur = 15; ctx.shadowColor = '#ffd700'; ctx.fillStyle = '#ffd700';
@@ -424,21 +416,25 @@ const player = {
         sound.heal();
     },
     takeDamage(dmg) {
+        // Если неуязвим - урон не проходит
         if(this.invulnTimer > 0) return; 
         
         this.hp -= dmg;
         this.hitTimer = 10; 
-        this.invulnTimer = 30; 
+        this.invulnTimer = 30; // 0.5 секунды защиты
         
         // Исправление бага с отсутствием смерти:
-        // Если HP <= 0, ставим 0 и вызываем Game Over СРАЗУ
         if (this.hp <= 0) {
             this.hp = 0;
-            updateUI(); // Обновить UI на 0
+            updateUI(); // Обновить UI на 0 перед смертью
+            
+            // Эффект взрыва
             for(let i=0; i<30; i++) particles.push(new Particle(this.x, this.y, '#ff0000'));
             sound.explode();
+            
+            // Вызов Game Over
             gameOver();
-            return; // Прерываем выполнение
+            return; // Важно: прерываем выполнение, чтобы не обновлять дальше
         }
         
         updateUI();
@@ -447,6 +443,7 @@ const player = {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         
+        // Мерцание при неуязвимости
         if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) {
             ctx.globalAlpha = 0.5;
         }
@@ -612,6 +609,13 @@ function togglePause() {
     else { currentState=STATE.PLAYING; document.getElementById('pauseScreen').style.display='none'; }
 }
 
+function gameOver() {
+    currentState = STATE.GAME_OVER;
+    document.getElementById('ui').style.display = 'none';
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('finalScore').innerText = killScore;
+}
+
 function showUpgrades() {
     document.getElementById('levelUpScreen').style.display='flex';
     const c = document.getElementById('upgradeContainer'); c.innerHTML='';
@@ -630,8 +634,8 @@ function showUpgrades() {
 }
 
 function updateUI() {
-    const hp = Math.ceil(player.hp);
-    document.getElementById('hpBar').style.width=(Math.max(0, player.hp)/player.maxHp*100)+'%';
+    const hp = Math.ceil(Math.max(0, player.hp));
+    document.getElementById('hpBar').style.width=(hp/player.maxHp*100)+'%';
     document.getElementById('hpText').innerText=hp+'/'+player.maxHp;
     document.getElementById('xpBar').style.width=(player.xp/player.nextXp*100)+'%';
     document.getElementById('levelValue').innerText=player.level;
@@ -643,10 +647,13 @@ function updateUI() {
 
 function animate() {
     requestAnimationFrame(animate);
+    
+    // Если состояние не PLAYING, не обновляем игру
     if(currentState===STATE.MENU) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         bg.draw(); return;
     }
+    if(currentState===STATE.GAME_OVER) return; // Останавливаем отрисовку при смерти
     if(currentState!==STATE.PLAYING) return;
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -659,7 +666,6 @@ function animate() {
             bossActive=true; enemies=[]; 
             const boss = new Enemy(true);
             enemies.push(boss);
-            // 5 Защитников
             for(let i=0; i<5; i++) enemies.push(new Enemy(false, boss));
         }
         if(Math.random() < 0.03) blackHoles.push(new BlackHole());
@@ -673,7 +679,6 @@ function animate() {
         if(!bh.active) blackHoles.splice(i, 1);
     });
 
-    // Пули игрока
     bullets.forEach((b,i)=>{
         b.update(); b.draw();
         if(!b.active){bullets.splice(i,1); return;}
@@ -688,7 +693,6 @@ function animate() {
         }
     });
 
-    // Пули врагов
     enemyBullets.forEach((b,i)=>{
         b.update(); b.draw();
         if(!b.active){enemyBullets.splice(i,1); return;}
