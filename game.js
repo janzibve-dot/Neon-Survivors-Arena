@@ -202,7 +202,7 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ (ИКОНКИ) ---
+// --- ЛУТ (АПТЕЧКА КАК ЧЕМОДАНЧИК) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
@@ -213,7 +213,7 @@ class Loot {
     update() {
         this.life--; 
         this.hoverOffset = Math.sin(frameCount * 0.1) * 3;
-        // НЕТ МАГНИТА
+        
         if(Math.hypot(player.x - this.x, player.y - this.y) < 30) {
             this.active = false; sound.pickup();
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"+1 MEDKIT","#ff0033"); }
@@ -227,35 +227,71 @@ class Loot {
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
-        ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.shadowBlur = 0;
         
         if(this.type === 'medkit') {
-            ctx.fillStyle = '#eee'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 20, 2); ctx.fill();
-            ctx.fillStyle = '#ff0033'; ctx.fillRect(-3, -7, 6, 14); ctx.fillRect(-7, -3, 14, 6);
-            ctx.fillStyle = '#fff'; ctx.fillText("MEDKIT", 0, -15);
+            // === РИСУЕМ КРАСНЫЙ ЧЕМОДАНЧИК ===
+            
+            // 1. Ручка (Серебряная дуга сверху)
+            ctx.strokeStyle = '#cccccc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, -14, 5, Math.PI, 0); // Дуга ручки
+            ctx.stroke();
+
+            // 2. Корпус (Красный прямоугольник со скругленными краями)
+            // Тень для объема (темно-красный)
+            ctx.fillStyle = '#990000';
+            ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill();
+            
+            // Основной цвет (ярко-красный) - чуть выше тени
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill();
+
+            // 3. Белый крест (Толстый)
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.rect(-3, -7, 6, 10); // Вертикаль
+            ctx.rect(-7, -5, 14, 6); // Горизонталь
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 4. Блик (Эффект пластика)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(-6, -16, 4, 2, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            // Подпись
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; 
+            ctx.fillText("HP", 0, -22);
         } 
         else if (this.type === 'mega_medkit') {
-            ctx.shadowBlur = 10; ctx.shadowColor = '#00ff00';
-            ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.roundRect(-14, -14, 28, 28, 4); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.font = "bold 20px Arial"; ctx.fillText("+", 0, 7);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL HEAL", 0, -20);
+            // МЕГА АПТЕЧКА (Зеленая версия)
+            ctx.shadowBlur = 15; ctx.shadowColor = '#00ff00';
+            ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.roundRect(-14, -14, 28, 28, 6); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.fillText("+", 0, 8);
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
+            // ЗВЕЗДА
             ctx.shadowBlur = 10; ctx.shadowColor = '#ffea00';
             ctx.fillStyle = '#ffea00'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = '#b8860b'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffea00'; ctx.fillText("BONUS", 0, -15);
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffea00'; ctx.textAlign = "center"; ctx.fillText("BONUS", 0, -15);
         } 
         else if(this.type === 'missile') {
+            // РАКЕТА
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(4,4); ctx.lineTo(-4,4); ctx.fill();
             ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(6,10); ctx.lineTo(-6,10); ctx.fill();
             ctx.rotate(Math.PI/4);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffaa00'; ctx.fillText("ROCKET", 0, -15);
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffaa00'; ctx.textAlign = "center"; ctx.fillText("ROCKET", 0, -15);
         } else {
+            // XP
             ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.fillRect(-5,-5,10,10);
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("XP", 0, -10);
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.textAlign = "center"; ctx.fillText("XP", 0, -10);
         }
         ctx.restore();
     }
@@ -298,7 +334,7 @@ class Missile {
 }
 let missiles = [];
 
-// --- ИГРОК (КОСМИЧЕСКИЙ КОРАБЛЬ) ---
+// --- ИГРОК (TIE SILENCER STYLE) ---
 const player = {
     x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
@@ -359,7 +395,6 @@ const player = {
         let strokeCol = this.color;
         let fillCol = '#050505'; // Черный корпус
         if (this.hitTimer > 0) {
-            // МИГАНИЕ КРАСНЫМ
             strokeCol = '#ff0000';
             fillCol = '#550000'; // Темно-красный корпус
             ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000';
@@ -380,12 +415,12 @@ const player = {
         ctx.strokeStyle = strokeCol; 
         ctx.lineWidth = 2;
 
-        // Левое крыло (верхнее)
+        // Левое крыло
         ctx.beginPath();
         ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath();
         ctx.fill(); ctx.stroke();
         
-        // Правое крыло (нижнее)
+        // Правое крыло
         ctx.beginPath();
         ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath();
         ctx.fill(); ctx.stroke();
@@ -394,9 +429,9 @@ const player = {
         ctx.fillRect(-5, -15, 6, 30);
         ctx.strokeRect(-5, -15, 6, 30);
 
-        // 3. Центральный корпус (Капсула)
+        // 3. Центральный корпус
         ctx.beginPath();
-        ctx.moveTo(15, 0); // Нос
+        ctx.moveTo(15, 0); 
         ctx.lineTo(-5, 6); 
         ctx.lineTo(-10, 0); 
         ctx.lineTo(-5, -6);
@@ -445,7 +480,7 @@ class Enemy {
     update() {
         const a = Math.atan2(player.y-this.y, player.x-this.x);
         this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
-        this.angle = a; // Все враги смотрят на игрока
+        this.angle = a; // Враги смотрят на игрока
         if(this.type==='boss') this.rotation += 0.01;
     }
     draw() {
@@ -457,9 +492,7 @@ class Enemy {
 
         if(this.boss) { 
             ctx.rotate(this.rotation);
-            // Корпус босса (Крейсер)
             ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill(); ctx.stroke();
-            // Вращающиеся щиты
             for(let i=0; i<4; i++) {
                 ctx.rotate(Math.PI/2);
                 ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(10, -60); ctx.lineTo(-10, -60); ctx.closePath();
@@ -468,31 +501,26 @@ class Enemy {
         }
         else if(this.type === 'tank') {
             ctx.rotate(this.angle);
-            // Танк: Тяжелый штурмовик (Широкий)
             ctx.beginPath();
             ctx.moveTo(15, 0);
             ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Детали брони
             ctx.strokeRect(-10, -8, 10, 16);
         }
         else if(this.type === 'runner') {
             ctx.rotate(this.angle);
-            // Бегун: Перехватчик (Стрела)
             ctx.beginPath();
             ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
         }
         else { 
-            // Обычный: Дрон (Крылатый)
             ctx.rotate(this.angle);
             ctx.beginPath();
             ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Крылья дрона
             ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-15, 15); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-15, -15); ctx.stroke();
         }
