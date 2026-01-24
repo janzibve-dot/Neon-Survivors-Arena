@@ -10,7 +10,7 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4, LEVEL_COMPLETE: 5, SHOP: 6 };
+const STATE = { MENU: 0, PLAYING: 1, LEVEL_UP: 2, GAME_OVER: 3, PAUSE: 4, LEVEL_COMPLETE: 5, HYPERSPACE: 6 };
 let currentState = STATE.MENU;
 
 const TOP_BOUND = 100;
@@ -42,7 +42,7 @@ const TRANSLATIONS = {
         weapon_gun: "ПУЛЕМЕТ", weapon_laser: "ЛАЗЕР", weapon_shotgun: "ДРОБОВИК",
         loot_stored: "В ЗАПАС", loot_healed: "ЛЕЧЕНИЕ", loot_rockets: "РАКЕТЫ!", loot_laser: "ЛАЗЕР!", loot_minigun: "ПУЛЕМЕТ!", loot_shotgun: "ДРОБОВИК!",
         loot_boss_core: "ЯДРО БОССА",
-        level_complete: "УРОВЕНЬ ЗАЧИЩЕН", next_wave_ready: "ЯДРО БОССА ПОЛУЧЕНО. СИСТЕМЫ ПЕРЕЗАРЯЖЕНЫ.", next_level_btn: "СЛЕДУЮЩИЙ УРОВЕНЬ",
+        level_complete: "УРОВЕНЬ ЗАЧИЩЕН", next_wave_ready: "ЯДРО БОССА ПОЛУЧЕНО. ГИПЕРПРЫЖОК ЗАВЕРШЕН.", next_level_btn: "СЛЕДУЮЩИЙ УРОВЕНЬ",
         rage_ready: "ЯРОСТЬ ГОТОВА [R]"
     },
     en: {
@@ -64,7 +64,7 @@ const TRANSLATIONS = {
         weapon_gun: "MINIGUN", weapon_laser: "LASER", weapon_shotgun: "SHOTGUN",
         loot_stored: "STORED", loot_healed: "HEALED", loot_rockets: "ROCKETS!", loot_laser: "LASER!", loot_minigun: "MINIGUN!", loot_shotgun: "SHOTGUN!",
         loot_boss_core: "BOSS CORE",
-        level_complete: "LEVEL CLEARED", next_wave_ready: "BOSS CORE ACQUIRED. SYSTEMS RECHARGED.", next_level_btn: "NEXT LEVEL",
+        level_complete: "LEVEL CLEARED", next_wave_ready: "BOSS CORE ACQUIRED. HYPERSPACE JUMP COMPLETE.", next_level_btn: "NEXT LEVEL",
         rage_ready: "RAGE READY [R]"
     }
 };
@@ -87,7 +87,7 @@ function toggleLanguage() {
 // Глобальные
 let frameCount = 0;
 let bossTimer = 0;
-let bossDefeated = false; // Флаг: Босс убит, не спавнить нового
+let bossDefeated = false; 
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
 let currentStage = 1; 
@@ -98,14 +98,16 @@ let stars = 0;
 let laserKills = 0;
 let achievements = [];
 let blackHoleTimer = 0; 
+let hyperspaceTimer = 0; // Таймер анимации гиперпрыжка
 
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let isMouseDown = false;
+let isMusicPlaying = false; // Статус музыки
 
 // --- ЗВУКИ ---
 class SoundManager {
-    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; }
+    constructor() { this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.lastPlayTime = {}; this.heartbeatTimer = 0; this.musicInterval = null; }
     init() {
         if (!this.ctx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -140,6 +142,45 @@ class SoundManager {
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         src.connect(filter); filter.connect(gain); gain.connect(this.masterGain); src.start(); src.stop(this.ctx.currentTime + duration);
     }
+    
+    // --- МУЗЫКА ---
+    toggleMusic() {
+        if (isMusicPlaying) { this.stopMusic(); } else { this.startMusic(); }
+        isMusicPlaying = !isMusicPlaying;
+        document.getElementById('musicBtn').innerText = isMusicPlaying ? "♫ ON" : "♫ OFF";
+    }
+    startMusic() {
+        if (!this.ctx) this.init();
+        let beat = 0;
+        this.musicInterval = setInterval(() => {
+            const time = this.ctx.currentTime;
+            // Bassline (Dark Synth)
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            const freq = beat % 4 === 0 ? 65.41 : (beat % 4 === 2 ? 73.42 : 82.41); // C2 - D2 - E2
+            osc.frequency.setValueAtTime(freq, time);
+            osc.frequency.exponentialRampToValueAtTime(freq/2, time + 0.2);
+            
+            // Filter envelope
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(400, time);
+            filter.frequency.exponentialRampToValueAtTime(100, time + 0.2);
+            
+            gain.gain.setValueAtTime(0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+            
+            osc.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+            osc.start(time); osc.stop(time + 0.25);
+            
+            beat++;
+        }, 250); // 240 BPM (быстрый темп)
+    }
+    stopMusic() {
+        if (this.musicInterval) clearInterval(this.musicInterval);
+    }
+
     gameOverTone() {
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
@@ -204,7 +245,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // Загрузка звезд ПРИ СТАРТЕ
+    // КНОПКА МУЗЫКИ
+    document.getElementById('musicBtn').addEventListener('click', () => sound.toggleMusic());
+
     const savedStars = localStorage.getItem('neon_survivor_stars');
     if(savedStars) stars = parseInt(savedStars);
 
@@ -245,6 +288,32 @@ function unlockAchievement(id, titleKey, descKey) {
     setTimeout(() => { popup.style.animation = 'fadeOut 0.5s forwards'; setTimeout(() => popup.remove(), 500); }, 4000);
 }
 
+// --- НОВЫЙ КЛАСС: ЦИФРЫ УРОНА ---
+class DamageNumber {
+    constructor(x, y, dmg, isCrit) {
+        this.x = x; this.y = y;
+        this.text = "-" + Math.round(dmg);
+        this.life = 60;
+        this.isCrit = isCrit;
+        this.vy = isCrit ? -2 : -1;
+    }
+    update() {
+        this.y += this.vy;
+        this.life--;
+        return this.life > 0;
+    }
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.life / 60;
+        ctx.font = this.isCrit ? "bold 24px 'Orbitron'" : "bold 16px 'Share Tech Mono'";
+        ctx.fillStyle = this.isCrit ? "#ff0000" : "#ffffff";
+        ctx.shadowBlur = 5; ctx.shadowColor = "#000";
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+let damageNumbers = [];
+
 // --- ЭФФЕКТЫ ---
 class Background {
     constructor() {
@@ -255,12 +324,24 @@ class Background {
             color: Math.random() > 0.8 ? '#00f3ff' : '#ffffff'
         });
     }
-    draw() {
-        ctx.fillStyle = "#fff";
+    draw(isHyperspace) {
         this.stars.forEach(s => {
-            s.y += s.speed; if(s.y > canvas.height) s.y = 0;
-            ctx.globalAlpha = Math.random() * 0.5 + 0.3; ctx.fillStyle = s.color;
-            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            // Эффект гиперпрыжка
+            if (isHyperspace) {
+                s.y += s.speed * 50; // Очень быстро
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = s.size;
+                ctx.beginPath();
+                ctx.moveTo(s.x, s.y);
+                ctx.lineTo(s.x, s.y - 100); // Длинный хвост
+                ctx.stroke();
+            } else {
+                s.y += s.speed;
+                ctx.fillStyle = s.color;
+                ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            }
+            if(s.y > canvas.height) s.y = 0;
         });
         ctx.globalAlpha = 1.0;
     }
@@ -381,11 +462,12 @@ class Loot {
         
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; 
-            // ПРОВЕРКА ПОДБОРА ЯДРА БОССА -> ПОБЕДА
+            // ПОБЕДА (ГИПЕРПРЫЖОК)
             if (this.type === 'boss_core') {
                 sound.powerup();
-                currentState = STATE.LEVEL_COMPLETE;
-                document.getElementById('levelCompleteScreen').style.display='flex';
+                // Запускаем анимацию гиперпрыжка
+                currentState = STATE.HYPERSPACE;
+                hyperspaceTimer = 120; // 2 секунды анимации
                 return;
             }
 
@@ -796,10 +878,7 @@ function startGame() {
     document.getElementById('levelCompleteScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     
-    // Скрываем контейнер босса при старте, чтобы полоска не висела
-    document.getElementById('bossContainer').style.display = 'none';
-    
-    // ПРАВКА: Загружаем сохраненный этап (не сбрасываем stars)
+    // Загрузка сохраненного этапа
     const saved = localStorage.getItem('neon_survivor_stage');
     currentStage = saved ? parseInt(saved) : 1;
     if (isNaN(currentStage)) currentStage = 1;
@@ -897,9 +976,21 @@ function animate() {
         bg.draw(); return;
     }
     if(currentState===STATE.GAME_OVER) return;
-    if(currentState===STATE.LEVEL_COMPLETE) {
+    if(currentState===STATE.LEVEL_COMPLETE || currentState===STATE.HYPERSPACE) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        bg.draw();
+        
+        // РИСУЕМ ФОН
+        if (currentState === STATE.HYPERSPACE) {
+            bg.draw(true); // Рисуем звезды как линии
+            if (hyperspaceTimer > 0) hyperspaceTimer--;
+            else {
+                currentState = STATE.LEVEL_COMPLETE;
+                document.getElementById('levelCompleteScreen').style.display = 'flex';
+            }
+        } else {
+            bg.draw(false);
+        }
+
         // Разрешаем рисовать игрока и лут на фоне победы
         player.draw();
         lootList.forEach(l=>{l.update(); l.draw();}); 
@@ -963,7 +1054,9 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-b.x, e.y-b.y) < e.r+5) {
                 if(!b.isLaser) b.active=false;
-                e.hp-=b.dmg; particles.push(new Particle(e.x,e.y,'#fff')); sound.hit();
+                e.hp-=b.dmg; 
+                damageNumbers.push(new DamageNumber(e.x, e.y, b.dmg, false)); // ЦИФРЫ
+                particles.push(new Particle(e.x,e.y,'#fff')); sound.hit();
                 if(e.hp<=0) killEnemy(e,j, b.isLaser);
                 if(!b.isLaser) break;
             }
@@ -983,6 +1076,7 @@ function animate() {
             let e=enemies[j];
             if(Math.hypot(e.x-m.x, e.y-m.y) < e.r+10) {
                 e.hp-=100; m.active=false; sound.explode();
+                damageNumbers.push(new DamageNumber(e.x, e.y, 100, true)); // ЦИФРЫ КРИТ
                 for(let k=0;k<10;k++) particles.push(new Particle(m.x,m.y,'#ffaa00'));
                 if(e.hp<=0) killEnemy(e,j);
                 break;
@@ -1001,6 +1095,7 @@ function animate() {
 
     lootList.forEach(l=>{l.update(); l.draw();}); lootList=lootList.filter(l=>l.active);
     particles.forEach(p=>{p.draw();}); particles=particles.filter(p=>p.update());
+    damageNumbers.forEach((d,i) => { if(!d.update()) damageNumbers.splice(i,1); else d.draw(); }); // Рисуем цифры
     floatText.updateAndDraw();
 }
 
@@ -1022,7 +1117,6 @@ function killEnemy(e, idx, isLaserKill = false) {
     if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         const r = Math.random();
-        // Аптечка: 27%, Звезда: 15%, Пулемет: 25%, Ракеты: 15%, Остальное: Опыт
         if(r < 0.27) lootList.push(new Loot(e.x+10,e.y,'medkit')); 
         else if(r < 0.42) lootList.push(new Loot(e.x-10,e.y,'star')); 
         else if(r < 0.67) lootList.push(new Loot(e.x,e.y+10,'machine_gun')); 
@@ -1046,8 +1140,6 @@ function killEnemy(e, idx, isLaserKill = false) {
         document.getElementById('bossContainer').style.display='none';
         
         sound.powerup(); 
-        
-        // Удаляем таймер и позволяем игроку играть
-        // Победа наступит только при поднятии ЯДРА
+        // Игра ПРОДОЛЖАЕТСЯ, пока не подберешь ЯДРО
     }
 }
