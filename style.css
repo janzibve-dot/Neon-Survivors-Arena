@@ -40,11 +40,8 @@ canvas { display: block; cursor: crosshair; }
 
 @keyframes flashYellow { from { background: rgba(255, 234, 0, 0.1); } to { background: rgba(255, 234, 0, 0.4); } }
 
-/* HUD */
 #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
 #top-dashboard { position: absolute; top: 0; left: 0; right: 0; height: 100px; background: rgba(0,0,0,0.85); border-bottom: 2px solid var(--cyber-cyan); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; pointer-events: auto; }
-
-.dash-group { display: flex; gap: 15px; align-items: center; }
 
 .dash-box { background: rgba(0, 0, 0, 0.6); border: 2px solid #333; padding: 10px 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); height: 80px; box-sizing: border-box; }
 .label { font-size: 10px; color: #888; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; }
