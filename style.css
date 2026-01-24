@@ -97,7 +97,7 @@ canvas { display: block; cursor: crosshair; }
 .btn-equip { background: var(--cyber-cyan); color: #000; }
 .btn-equipped { background: #333; color: #888; cursor: default; }
 .btn-locked { background: #333; color: #555; cursor: not-allowed; }
-#bossContainer { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; }
+#bossContainer { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; display: none; }
 .boss-label { color: var(--cyber-red); font-weight: bold; animation: flashText 0.5s infinite alternate; font-size: 20px; margin-bottom: 5px; text-shadow: 0 0 10px var(--cyber-red); }
 .tech-bar-container { height: 25px; background: #110000; border: 2px solid var(--cyber-red); width: 100%; box-shadow: 0 0 20px var(--cyber-red); }
 .boss-fill { height: 100%; background: var(--cyber-red); box-shadow: 0 0 10px var(--cyber-red); }
