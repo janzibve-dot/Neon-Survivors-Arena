@@ -30,16 +30,12 @@ let isMouseDown = false;
 
 // --- ЗВУКОВОЙ ДВИЖОК ---
 class SoundManager {
-    constructor() {
-        this.ctx = null;
-    }
+    constructor() { this.ctx = null; }
     init() {
         if (!this.ctx) {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+        if (this.ctx.state === 'suspended') { this.ctx.resume(); }
     }
     playTone(freq, type, dur, vol=0.1) {
         if(!this.ctx) return;
@@ -49,27 +45,22 @@ class SoundManager {
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + dur);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(); osc.stop(this.ctx.currentTime + dur);
     }
     shoot() { this.playTone(400, 'square', 0.1, 0.05); }
     hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
     pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
-    powerup() { this.playTone(300, 'square', 0.3, 0.15); } // Звук для мега-аптечки
+    powerup() { this.playTone(300, 'square', 0.3, 0.15); }
     explode() { this.playTone(50, 'sawtooth', 0.3, 0.2); }
 }
 const sound = new SoundManager();
 
-// --- ИНИЦИАЛИЗАЦИЯ КНОПОК ---
+// --- ИНИЦИАЛИЗАЦИЯ ---
 window.onload = function() {
     const startBtn = document.getElementById('startBtn');
     if(startBtn) {
-        startBtn.onclick = () => {
-            sound.init(); 
-            startGame();
-        };
+        startBtn.onclick = () => { sound.init(); startGame(); };
     }
     document.getElementById('resumeBtn').onclick = togglePause;
     animate(); 
@@ -100,8 +91,7 @@ window.addEventListener('mouseup', e => { if (e.button === 0) isMouseDown = fals
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 
-// --- КЛАССЫ ВИЗУАЛА ---
-
+// --- ВИЗУАЛ ---
 class Background {
     constructor() {
         this.stars = [];
@@ -144,20 +134,30 @@ class Particle {
         this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s; this.life=1.0;
     }
     update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.05; return this.life > 0; }
-    draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, 4, 4); ctx.globalAlpha = 1.0; }
+    draw() { 
+        ctx.globalAlpha = this.life; ctx.fillStyle = this.color; 
+        // 3D частица
+        ctx.fillRect(this.x, this.y+2, 4, 4); // Тень
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(this.x, this.y, 4, 4);   // Свет
+        ctx.globalAlpha = 1.0; 
+    }
 }
 let particles = [];
 
-// --- ЛУТ (ГЕОМЕТРИЧЕСКИЕ ФИГУРЫ) ---
+// --- ЛУТ (3D ГЕОМЕТРИЯ) ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
-        // Звезды и мега-аптечка живут дольше
         this.life = (type==='star' || type==='mega_medkit') ? 900 : 600; 
         this.active=true; this.angle=0; this.magnet=false;
+        this.zHeight = 5; // Высота "3D"
     }
     update() {
         this.life--; this.angle += 0.05;
+        // Эффект парения
+        this.zOffset = Math.sin(frameCount * 0.1) * 3; 
+
         if(Math.hypot(player.x - this.x, player.y - this.y) < 150) this.magnet = true;
         if(this.magnet) {
             const a = Math.atan2(player.y - this.y, player.x - this.x);
@@ -165,49 +165,78 @@ class Loot {
         }
         if(Math.hypot(player.x - this.x, player.y - this.y) < 35) {
             this.active = false; sound.pickup();
-            
             if(this.type === 'medkit') { medkits++; floatText.show(this.x,this.y,"MEDKIT","#ff0033"); }
             else if(this.type === 'mega_medkit') { 
-                player.hp = player.maxHp; // ПОЛНОЕ ЛЕЧЕНИЕ
-                sound.powerup();
+                player.hp = player.maxHp; sound.powerup();
                 floatText.show(this.x,this.y,"FULL RESTORE","#00ff00"); 
             }
             else if(this.type === 'star') { stars++; floatText.show(this.x,this.y,"STAR","#ffea00"); }
             else if(this.type === 'missile') { player.missiles++; floatText.show(this.x,this.y,"MISSILE","#ffaa00"); }
             else if(this.type === 'xp') player.gainXp(10);
-            
             updateUI();
         }
         if(this.life<=0) this.active = false;
     }
     draw() {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        ctx.shadowBlur = 15;
-        // ОТРИСОВКА: ТОЛЬКО ГЕОМЕТРИЯ
+        ctx.save(); ctx.translate(this.x, this.y + this.zOffset); 
+        
+        // 3D ЭФФЕКТ: Рисуем "толщину" затемненным цветом, затем "крышку"
         if(this.type === 'medkit') {
-            ctx.shadowColor = '#ff0033'; ctx.fillStyle = '#ff0033'; 
-            ctx.fillRect(-8,-8,16,16); 
+            // Тень (Бок)
+            ctx.fillStyle = '#990000';
+            ctx.fillRect(-8, -8 + this.zHeight, 16, 16);
+            // Верх
+            ctx.shadowColor = '#ff0033'; ctx.shadowBlur = 10;
+            ctx.fillStyle = '#ff0033'; 
+            ctx.fillRect(-8, -8, 16, 16);
+            // Крест
             ctx.fillStyle = '#fff'; ctx.fillRect(-2,-6,4,12); ctx.fillRect(-6,-2,12,4); 
         } 
-        else if (this.type === 'mega_medkit') { // Награда с босса
-            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; 
-            // Большой зеленый плюс
-            ctx.fillRect(-12,-4,24,8);
-            ctx.fillRect(-4,-12,8,24);
+        else if (this.type === 'mega_medkit') {
+            // Тень
+            ctx.fillStyle = '#005500';
+            ctx.fillRect(-12, -4 + this.zHeight, 24, 8);
+            ctx.fillRect(-4, -12 + this.zHeight, 8, 24);
+            // Верх
+            ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 15;
+            ctx.fillStyle = '#00ff00'; 
+            ctx.fillRect(-12,-4,24,8); ctx.fillRect(-4,-12,8,24);
             ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-            ctx.strokeRect(-12,-4,24,8);
-            ctx.strokeRect(-4,-12,8,24);
+            ctx.strokeRect(-12,-4,24,8); ctx.strokeRect(-4,-12,8,24);
         }
         else if(this.type === 'star') {
-            ctx.shadowColor = '#ffea00'; ctx.fillStyle = '#ffea00'; 
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,0); ctx.lineTo(0,10); ctx.lineTo(-8,0); ctx.fill(); 
-        } else if(this.type === 'missile') {
-            ctx.shadowColor = '#ffaa00'; ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(8,8); ctx.lineTo(-8,8); ctx.fill(); 
+            ctx.rotate(this.angle);
+            // Тень
+            ctx.fillStyle = '#aa8800';
+            this.drawStarPath(this.zHeight);
+            // Верх
+            ctx.shadowColor = '#ffea00'; ctx.shadowBlur = 10;
+            ctx.fillStyle = '#ffea00'; 
+            this.drawStarPath(0);
+        } 
+        else if(this.type === 'missile') {
+            ctx.rotate(this.angle);
+            // Тень
+            ctx.fillStyle = '#aa6600';
+            this.drawTrianglePath(this.zHeight);
+            // Верх
+            ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 10;
+            ctx.fillStyle = '#ffaa00';
+            this.drawTrianglePath(0);
         } else {
-            ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8); 
+            // XP
+            ctx.fillStyle = '#005500'; ctx.fillRect(-4, -4+4, 8, 8);
+            ctx.shadowColor = '#00ff00'; ctx.shadowBlur = 5;
+            ctx.fillStyle = '#00ff00'; ctx.fillRect(-4,-4,8,8);
         }
         ctx.restore();
+    }
+    
+    drawStarPath(offsetY) {
+        ctx.beginPath(); ctx.moveTo(0,-10+offsetY); ctx.lineTo(8,0+offsetY); ctx.lineTo(0,10+offsetY); ctx.lineTo(-8,0+offsetY); ctx.fill();
+    }
+    drawTrianglePath(offsetY) {
+        ctx.beginPath(); ctx.moveTo(0,-10+offsetY); ctx.lineTo(8,8+offsetY); ctx.lineTo(-8,8+offsetY); ctx.fill();
     }
 }
 let lootList = [];
@@ -216,8 +245,10 @@ class Bullet {
     constructor(x, y, a, dmg) { this.x=x; this.y=y; this.vx=Math.cos(a)*15; this.vy=Math.sin(a)*15; this.dmg=dmg; this.active=true; }
     update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.active=false; }
     draw() {
-        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 3; 
-        ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx, this.y-this.vy); ctx.stroke();
+        ctx.shadowBlur = 5; ctx.shadowColor = '#00f3ff';
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
     }
 }
 let bullets = [];
@@ -239,15 +270,21 @@ class Missile {
     }
     draw() {
         ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-        ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-5,5); ctx.lineTo(-5,-5); ctx.fill();
+        // 3D Ракета
+        ctx.fillStyle = '#884400'; // Тень
+        ctx.beginPath(); ctx.moveTo(10,3); ctx.lineTo(-5,8); ctx.lineTo(-5,-2); ctx.fill();
+        
+        ctx.shadowColor='#ffaa00'; ctx.shadowBlur=10;
+        ctx.fillStyle = '#ffaa00'; // Корпус
+        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-5,5); ctx.lineTo(-5,-5); ctx.fill();
         ctx.restore();
     }
 }
 let missiles = [];
 
-// --- ИГРОК ---
+// --- ИГРОК (3D) ---
 const player = {
-    x: 0, y: 0, radius: 15, color: '#00f3ff', speed: 5, angle: 0,
+    x: 0, y: 0, radius: 15, color: '#00f3ff', darkColor: '#008b8b', speed: 5, angle: 0,
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
     dmg: 10, fireRate: 10, cooldown: 0, missiles: 3, missileCd: 0,
     reset() {
@@ -295,44 +332,114 @@ const player = {
     },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        
+        // Тень/Бок (3D эффект)
+        ctx.fillStyle = this.darkColor;
+        ctx.beginPath(); ctx.moveTo(15, 5); ctx.lineTo(-10, 15); ctx.lineTo(-5, 5); ctx.lineTo(-10, -7); ctx.fill();
+
+        // Верх (Свечение)
         ctx.shadowBlur = 15; ctx.shadowColor = this.color; ctx.fillStyle = this.color;
-        // ТРЕУГОЛЬНИК
         ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-5,0); ctx.lineTo(-10,-10); ctx.fill();
+        
         ctx.restore();
     }
 };
 
+// --- ВРАГИ (3 ТИПА + БОСС, ВСЕ В 3D) ---
 class Enemy {
     constructor(boss=false) {
         this.boss = boss;
+        this.zHeight = 8; // Высота врага
+
         if(boss) {
-            this.x=canvas.width/2; this.y=-100; this.hp=600; this.maxHp=600; this.r=60; this.speed=1; this.color='#ff0033';
+            this.x=canvas.width/2; this.y=-100; this.hp=600; this.maxHp=600; this.r=60; this.speed=1; 
+            this.color='#ff0033'; this.darkColor='#880000';
+            this.type = 'boss';
             document.getElementById('bossContainer').style.display='block';
         } else {
-            const s = Math.floor(Math.random()*4);
-            if(s==0){this.x=Math.random()*canvas.width;this.y=-30;}
-            else if(s==1){this.x=canvas.width+30;this.y=Math.random()*canvas.height;}
-            else if(s==2){this.x=Math.random()*canvas.width;this.y=canvas.height+30;}
+            // ГЕНЕРАЦИЯ ТИПА ВРАГА
+            const rand = Math.random();
+            const edge = Math.floor(Math.random()*4);
+            
+            // Позиция спавна
+            if(edge==0){this.x=Math.random()*canvas.width;this.y=-30;}
+            else if(edge==1){this.x=canvas.width+30;this.y=Math.random()*canvas.height;}
+            else if(edge==2){this.x=Math.random()*canvas.width;this.y=canvas.height+30;}
             else{this.x=-30;this.y=Math.random()*canvas.height;}
-            this.hp=20+player.level*5; this.maxHp=this.hp; this.r=15; this.speed=2+Math.random(); this.color='#ff00ff';
+
+            // Типы
+            if(rand < 0.2) { 
+                // ТАНК (Медленный, жирный, Квадрат)
+                this.type = 'tank'; this.hp = 40 + player.level*8; this.maxHp = this.hp;
+                this.speed = 1.0; this.r = 20; 
+                this.color = '#ff00ff'; this.darkColor = '#880088'; // Фиолетовый
+            } else if (rand < 0.5) {
+                // БЕГУН (Быстрый, слабый, Треугольник)
+                this.type = 'runner'; this.hp = 10 + player.level*3; this.maxHp = this.hp;
+                this.speed = 3.5; this.r = 12;
+                this.color = '#ffea00'; this.darkColor = '#aa8800'; // Желтый
+            } else {
+                // ОБЫЧНЫЙ (Средний, Шестиугольник)
+                this.type = 'normal'; this.hp = 20 + player.level*5; this.maxHp = this.hp;
+                this.speed = 2.0; this.r = 15;
+                this.color = '#00ff00'; this.darkColor = '#005500'; // Зеленый
+            }
+            this.damage = 10;
         }
     }
     update() {
         const a = Math.atan2(player.y-this.y, player.x-this.x);
         this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
+        
+        // Поворот для бегунов (чтобы смотрели на игрока)
+        if(this.type === 'runner') this.angle = a;
     }
     draw() {
-        ctx.save(); ctx.shadowBlur=10; ctx.shadowColor=this.color; ctx.fillStyle=this.color;
+        ctx.save(); 
+        ctx.shadowBlur=10; ctx.shadowColor=this.color;
+        
         if(this.boss) { 
-            ctx.fillRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
-            ctx.strokeStyle='#fff'; ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
+            // Босс (3D Куб)
+            ctx.fillStyle = this.darkColor; 
+            ctx.fillRect(this.x-this.r, this.y-this.r + 10, this.r*2, this.r*2); // Тень
+            
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x-this.r, this.y-this.r, this.r*2, this.r*2); // Лицо
+            ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+            ctx.strokeRect(this.x-this.r,this.y-this.r,this.r*2,this.r*2); 
+        }
+        else if(this.type === 'tank') {
+            // Танк (Ромб)
+            ctx.translate(this.x, this.y);
+            ctx.rotate(Math.PI/4); // Поворот на 45 град
+            ctx.fillStyle = this.darkColor;
+            ctx.fillRect(-this.r, -this.r + 5, this.r*2, this.r*2);
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.r, -this.r, this.r*2, this.r*2);
+        }
+        else if(this.type === 'runner') {
+            // Бегун (Треугольник)
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+            ctx.fillStyle = this.darkColor;
+            ctx.beginPath(); ctx.moveTo(this.r, 3); ctx.lineTo(-this.r, this.r+3); ctx.lineTo(-this.r, -this.r+3); ctx.fill();
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.moveTo(this.r, 0); ctx.lineTo(-this.r, this.r); ctx.lineTo(-this.r, -this.r); ctx.fill();
         }
         else { 
-            ctx.beginPath(); 
-            for(let i=0;i<6;i++) ctx.lineTo(this.x+this.r*Math.cos(i*Math.PI/3), this.y+this.r*Math.sin(i*Math.PI/3)); 
-            ctx.fill(); ctx.strokeStyle='#fff'; ctx.stroke(); 
+            // Обычный (Шестиугольник)
+            ctx.fillStyle = this.darkColor;
+            this.drawHex(this.x, this.y + 5);
+            ctx.fillStyle = this.color;
+            this.drawHex(this.x, this.y);
         }
         ctx.restore();
+    }
+    
+    drawHex(x, y) {
+        ctx.beginPath(); 
+        for(let i=0;i<6;i++) ctx.lineTo(x+this.r*Math.cos(i*Math.PI/3), y+this.r*Math.sin(i*Math.PI/3)); 
+        ctx.fill(); 
     }
 }
 let enemies = [];
@@ -369,7 +476,7 @@ function showUpgrades() {
             d:"+20 MaxHP & FULL HEAL", 
             f:()=>{ 
                 player.maxHp+=20; 
-                player.hp = player.maxHp; // ПОЛНОЕ ЛЕЧЕНИЕ ПРИ ПРОКАЧКЕ
+                player.hp = player.maxHp; 
             }
         },
         {n:"РАКЕТЫ", d:"+3 Ammo", f:()=>{player.missiles+=3;}}
@@ -465,19 +572,17 @@ function animate() {
 function killEnemy(e, idx) {
     enemies.splice(idx,1); killScore+=e.boss?1000:100;
     
-    // ЛУТ С ОБЫЧНЫХ
+    // ЛУТ
     if(!e.boss) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         if(Math.random()<0.05) lootList.push(new Loot(e.x+10,e.y,'medkit'));
         if(Math.random()<0.60) lootList.push(new Loot(e.x-10,e.y,'star'));
         if(Math.random()<0.15) lootList.push(new Loot(e.x,e.y+10,'missile'));
     } 
-    // ЛУТ С БОССА (ГАРАНТИРОВАННОЕ ПОЛНОЕ ЛЕЧЕНИЕ)
     else {
-        lootList.push(new Loot(e.x,e.y,'mega_medkit')); // Мега-аптечка
+        lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
         for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'star'));
         for(let k=0;k<3;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'missile'));
-        
         bossActive=false; 
         document.getElementById('bossContainer').style.display='none'; 
         scoreTime=0; 
