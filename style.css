@@ -15,6 +15,36 @@ body {
 }
 canvas { display: block; cursor: crosshair; }
 
+/* КНОПКА ЯЗЫКА */
+.lang-button {
+    position: absolute; top: 20px; right: 20px; z-index: 100;
+    background: rgba(0,0,0,0.8); border: 2px solid var(--cyber-cyan); color: var(--cyber-cyan);
+    font-family: var(--font-header); font-weight: bold; padding: 5px 10px; cursor: pointer;
+    box-shadow: 0 0 10px var(--cyber-cyan); transition: 0.2s;
+}
+.lang-button:hover { background: var(--cyber-cyan); color: #000; }
+
+/* ДОСТИЖЕНИЯ */
+#achievementContainer {
+    position: absolute; bottom: 20px; right: 20px; width: 300px; z-index: 100;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.achievement-popup {
+    background: rgba(0, 0, 0, 0.9); border-left: 4px solid var(--cyber-yellow);
+    padding: 15px; color: #fff; box-shadow: 0 0 15px rgba(255, 234, 0, 0.3);
+    animation: slideIn 0.5s ease-out forwards;
+    display: flex; align-items: center; gap: 10px;
+}
+.ach-icon { font-size: 24px; }
+.ach-text h4 { margin: 0; color: var(--cyber-yellow); font-size: 14px; }
+.ach-text p { margin: 5px 0 0 0; font-size: 12px; color: #ccc; }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut { to { opacity: 0; } }
+
 /* ЭФФЕКТЫ */
 .scanlines {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -22,37 +52,26 @@ canvas { display: block; cursor: crosshair; }
                 linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
     background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; opacity: 0.4;
 }
-
-/* СЛОЙ УРОНА / ПУЛЬСАЦИИ */
 #damageOverlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    box-shadow: inset 0 0 0px var(--cyber-red); 
-    opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
+    box-shadow: inset 0 0 0px var(--cyber-red); opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50;
 }
-
-/* Анимация пульсации при низком здоровье */
-.critical-health {
-    animation: pulseRed 1s infinite alternate;
-}
-
-@keyframes pulseRed {
-    from { box-shadow: inset 0 0 20px var(--cyber-red); opacity: 0.3; }
-    to { box-shadow: inset 0 0 100px var(--cyber-red); opacity: 0.6; }
-}
+.critical-health { animation: pulseRed 1s infinite alternate; }
+@keyframes pulseRed { from { box-shadow: inset 0 0 20px var(--cyber-red); opacity: 0.3; } to { box-shadow: inset 0 0 100px var(--cyber-red); opacity: 0.6; } }
 
 /* HUD */
 #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
 
 #top-dashboard {
     position: absolute; top: 0; left: 0; right: 0; height: 100px;
-    background: rgba(0,0,0,0.5); 
+    background: rgba(0,0,0,0.85); /* Черный, слегка прозрачный */
     border-bottom: 2px solid var(--cyber-cyan);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 20px; pointer-events: auto; gap: 15px;
 }
 
 .dash-box {
-    background: rgba(0, 0, 0, 0.9); border: 2px solid #333; padding: 10px 15px; border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6); border: 2px solid #333; padding: 10px 15px; border-radius: 8px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     box-shadow: 0 0 10px rgba(0,0,0,0.5); height: 80px; box-sizing: border-box;
 }
