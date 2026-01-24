@@ -47,6 +47,7 @@ class SoundManager {
         osc.start(); osc.stop(this.ctx.currentTime + dur);
     }
     shoot() { this.playTone(400, 'square', 0.1, 0.05); }
+    enemyShoot() { this.playTone(200, 'sawtooth', 0.1, 0.05); }
     hit() { this.playTone(100, 'sawtooth', 0.1, 0.1); }
     pickup() { this.playTone(600, 'sine', 0.1, 0.1); }
     powerup() { this.playTone(300, 'square', 0.3, 0.15); }
@@ -202,7 +203,7 @@ class BlackHole {
 let blackHoles = [];
 
 
-// --- ЛУТ (АПТЕЧКА КАК ЧЕМОДАНЧИК) ---
+// --- ЛУТ ---
 class Loot {
     constructor(x, y, type) {
         this.x=x; this.y=y; this.type=type;
@@ -229,66 +230,35 @@ class Loot {
         ctx.save(); ctx.translate(this.x, this.y + this.hoverOffset);
         
         if(this.type === 'medkit') {
-            // === РИСУЕМ КРАСНЫЙ ЧЕМОДАНЧИК ===
-            
-            // 1. Ручка (Серебряная дуга сверху)
-            ctx.strokeStyle = '#cccccc';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(0, -14, 5, Math.PI, 0); // Дуга ручки
-            ctx.stroke();
-
-            // 2. Корпус (Красный прямоугольник со скругленными краями)
-            // Тень для объема (темно-красный)
-            ctx.fillStyle = '#990000';
-            ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill();
-            
-            // Основной цвет (ярко-красный) - чуть выше тени
-            ctx.fillStyle = '#ff0000';
-            ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill();
-
-            // 3. Белый крест (Толстый)
-            ctx.fillStyle = '#ffffff';
-            ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
-            ctx.beginPath();
-            ctx.rect(-3, -7, 6, 10); // Вертикаль
-            ctx.rect(-7, -5, 14, 6); // Горизонталь
-            ctx.fill();
+            // КРАСНЫЙ ЧЕМОДАНЧИК
+            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, -14, 5, Math.PI, 0); ctx.stroke(); // Ручка
+            ctx.fillStyle = '#990000'; ctx.beginPath(); ctx.roundRect(-12, -10, 24, 22, 5); ctx.fill(); // Тень
+            ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.roundRect(-12, -12, 24, 20, 5); ctx.fill(); // Корпус
+            ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
+            ctx.beginPath(); ctx.rect(-3, -7, 6, 10); ctx.rect(-7, -5, 14, 6); ctx.fill(); // Крест
             ctx.shadowBlur = 0;
-
-            // 4. Блик (Эффект пластика)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.beginPath();
-            ctx.ellipse(-6, -16, 4, 2, 0, 0, Math.PI*2);
-            ctx.fill();
-
-            // Подпись
-            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; 
-            ctx.fillText("HP", 0, -22);
+            ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#fff'; ctx.textAlign = "center"; ctx.fillText("HP", 0, -22);
         } 
         else if (this.type === 'mega_medkit') {
-            // МЕГА АПТЕЧКА (Зеленая версия)
             ctx.shadowBlur = 15; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.roundRect(-14, -14, 28, 28, 6); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.fillText("+", 0, 8);
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.fillText("FULL", 0, -20);
         }
         else if(this.type === 'star') {
-            // ЗВЕЗДА
             ctx.shadowBlur = 10; ctx.shadowColor = '#ffea00';
             ctx.fillStyle = '#ffea00'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = '#b8860b'; ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffea00'; ctx.textAlign = "center"; ctx.fillText("BONUS", 0, -15);
         } 
         else if(this.type === 'missile') {
-            // РАКЕТА
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(4,4); ctx.lineTo(-4,4); ctx.fill();
             ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(6,10); ctx.lineTo(-6,10); ctx.fill();
             ctx.rotate(Math.PI/4);
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#ffaa00'; ctx.textAlign = "center"; ctx.fillText("ROCKET", 0, -15);
         } else {
-            // XP
             ctx.shadowBlur = 5; ctx.shadowColor = '#00ff00';
             ctx.fillStyle = '#00ff00'; ctx.fillRect(-5,-5,10,10);
             ctx.font = "bold 10px sans-serif"; ctx.fillStyle = '#00ff00'; ctx.textAlign = "center"; ctx.fillText("XP", 0, -10);
@@ -299,16 +269,25 @@ class Loot {
 let lootList = [];
 
 class Bullet {
-    constructor(x, y, a, dmg) { this.x=x; this.y=y; this.vx=Math.cos(a)*18; this.vy=Math.sin(a)*18; this.dmg=dmg; this.active=true; }
+    constructor(x, y, a, dmg, isEnemy=false) { 
+        this.x=x; this.y=y; this.vx=Math.cos(a)*(isEnemy?5:18); this.vy=Math.sin(a)*(isEnemy?5:18); 
+        this.dmg=dmg; this.active=true; this.isEnemy=isEnemy; 
+    }
     update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width||this.y<0||this.y>canvas.height) this.active=false; }
     draw() {
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; 
-        ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx*0.5, this.y-this.vy*0.5); ctx.stroke();
+        ctx.shadowBlur = 10; 
+        if (this.isEnemy) {
+            ctx.shadowColor = '#ff0033'; ctx.fillStyle = '#ff0033'; 
+            ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI*2); ctx.fill();
+        } else {
+            ctx.shadowColor = '#00f3ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; 
+            ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(this.x-this.vx*0.5, this.y-this.vy*0.5); ctx.stroke();
+        }
         ctx.shadowBlur = 0;
     }
 }
 let bullets = [];
+let enemyBullets = [];
 
 class Missile {
     constructor(x, y, target) {
@@ -334,7 +313,7 @@ class Missile {
 }
 let missiles = [];
 
-// --- ИГРОК (TIE SILENCER STYLE) ---
+// --- ИГРОК ---
 const player = {
     x: 0, y: 0, radius: 25, color: '#00f3ff', 
     hp: 100, maxHp: 100, level: 1, xp: 0, nextXp: 100,
@@ -384,81 +363,55 @@ const player = {
     },
     takeDamage(dmg) {
         this.hp -= dmg;
-        this.hitTimer = 10; // 10 кадров мигания
+        this.hitTimer = 10; 
         updateUI();
         if(this.hp <= 0) gameOver();
     },
     draw() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        let strokeCol = this.color; let fillCol = '#050505';
+        if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
+        else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
 
-        // Цвета при уроне
-        let strokeCol = this.color;
-        let fillCol = '#050505'; // Черный корпус
-        if (this.hitTimer > 0) {
-            strokeCol = '#ff0000';
-            fillCol = '#550000'; // Темно-красный корпус
-            ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000';
-        } else {
-            ctx.shadowBlur = 15; ctx.shadowColor = this.color;
-        }
-
-        // 1. Двигатели (след)
         if (this.hitTimer <= 0) {
-            const flicker = Math.random() * 3;
-            ctx.fillStyle = strokeCol;
-            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2);
-            ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
+            const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
+            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
         }
-
-        // 2. Вертикальные крылья (TIE Style)
-        ctx.fillStyle = fillCol; 
-        ctx.strokeStyle = strokeCol; 
-        ctx.lineWidth = 2;
-
-        // Левое крыло
-        ctx.beginPath();
-        ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        
-        // Правое крыло
-        ctx.beginPath();
-        ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath();
-        ctx.fill(); ctx.stroke();
-
-        // Соединительные стойки
-        ctx.fillRect(-5, -15, 6, 30);
-        ctx.strokeRect(-5, -15, 6, 30);
-
-        // 3. Центральный корпус
-        ctx.beginPath();
-        ctx.moveTo(15, 0); 
-        ctx.lineTo(-5, 6); 
-        ctx.lineTo(-10, 0); 
-        ctx.lineTo(-5, -6);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-
-        // Кабина (светящаяся)
+        ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
+        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
         if (this.hitTimer <= 0) {
             ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff';
             ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill();
         }
-
         ctx.restore();
     }
 };
 
-// --- ВРАГИ (КОСМИЧЕСКИЕ КОРАБЛИ) ---
+// --- ВРАГИ ---
 class Enemy {
-    constructor(boss=false) {
+    constructor(boss=false, bossParent=null) {
         this.boss = boss;
+        this.bossParent = bossParent;
+        this.isDefender = !!bossParent;
+        this.shootTimer = Math.random() * 120;
+
         if(boss) {
-            this.x=canvas.width/2; this.y=-100; this.hp=600; this.maxHp=600; this.r=70; this.speed=1; 
+            this.x=canvas.width/2; this.y=-100; this.hp=1000 + player.level*200; this.maxHp=this.hp; this.r=70; this.speed=0.5; 
             this.color='#ff0033'; this.type='boss'; this.rotation=0;
             document.getElementById('bossContainer').style.display='block';
-        } else {
-            const rand = Math.random();
-            const edge = Math.floor(Math.random()*4);
+        } 
+        else if (this.isDefender) {
+            this.x = bossParent.x; this.y = bossParent.y;
+            this.hp = 60 + player.level*10; this.maxHp = this.hp; this.r = 15; this.speed = 0;
+            this.color = '#ff0033'; this.type = 'defender'; this.angleOffset = Math.random() * Math.PI * 2;
+            this.orbitRadius = 100;
+            this.damage = 15;
+        }
+        else {
+            const rand = Math.random(); const edge = Math.floor(Math.random()*4);
             if(edge==0){this.x=Math.random()*canvas.width;this.y=-30;}
             else if(edge==1){this.x=canvas.width+30;this.y=Math.random()*canvas.height;}
             else if(edge==2){this.x=Math.random()*canvas.width;this.y=canvas.height+30;}
@@ -466,60 +419,102 @@ class Enemy {
 
             if(rand < 0.2) { 
                 this.type = 'tank'; this.hp = 50 + player.level*8; this.maxHp = this.hp;
-                this.speed = 1.0; this.r = 25; this.color = '#ff00ff'; // Фиолетовый
+                this.speed = 1.0; this.r = 25; this.color = '#ff00ff';
             } else if (rand < 0.5) {
                 this.type = 'runner'; this.hp = 15 + player.level*3; this.maxHp = this.hp;
-                this.speed = 3.5; this.r = 12; this.color = '#ffea00'; // Желтый
+                this.speed = 3.5; this.r = 12; this.color = '#ffea00';
             } else {
                 this.type = 'normal'; this.hp = 30 + player.level*5; this.maxHp = this.hp;
-                this.speed = 2.0; this.r = 18; this.color = '#00ff00'; // Зеленый
+                this.speed = 2.0; this.r = 18; this.color = '#00ff00';
             }
             this.damage = 10;
         }
     }
     update() {
-        const a = Math.atan2(player.y-this.y, player.x-this.x);
-        this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
-        this.angle = a; // Враги смотрят на игрока
-        if(this.type==='boss') this.rotation += 0.01;
+        if(this.type === 'boss') {
+            const a = Math.atan2(player.y-this.y, player.x-this.x);
+            this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
+            this.angle = a; 
+            
+            // Босс стреляет
+            this.shootTimer--;
+            if(this.shootTimer <= 0) {
+                this.shootTimer = 60; // Раз в секунду
+                sound.enemyShoot();
+                enemyBullets.push(new Bullet(this.x + Math.cos(a+0.5)*40, this.y + Math.sin(a+0.5)*40, a, 20, true));
+                enemyBullets.push(new Bullet(this.x + Math.cos(a-0.5)*40, this.y + Math.sin(a-0.5)*40, a, 20, true));
+            }
+        }
+        else if (this.type === 'defender') {
+            if(!this.bossParent || this.bossParent.hp <= 0) {
+                this.hp = 0; // Умирает если босса нет
+            } else {
+                this.angleOffset += 0.02;
+                this.x = this.bossParent.x + Math.cos(this.angleOffset) * this.orbitRadius;
+                this.y = this.bossParent.y + Math.sin(this.angleOffset) * this.orbitRadius;
+                
+                // Защитник стреляет
+                this.shootTimer--;
+                if(this.shootTimer <= 0) {
+                    this.shootTimer = 120;
+                    const a = Math.atan2(player.y-this.y, player.x-this.x);
+                    enemyBullets.push(new Bullet(this.x, this.y, a, 10, true));
+                }
+            }
+        }
+        else {
+            const a = Math.atan2(player.y-this.y, player.x-this.x);
+            this.x += Math.cos(a)*this.speed; this.y += Math.sin(a)*this.speed;
+            this.angle = a;
+        }
     }
     draw() {
         ctx.save(); ctx.translate(this.x, this.y);
         ctx.shadowBlur=15; ctx.shadowColor=this.color;
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = this.color;
-        ctx.fillStyle = '#050505'; // Черный корпус
+        ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
 
         if(this.boss) { 
-            ctx.rotate(this.rotation);
-            ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill(); ctx.stroke();
-            for(let i=0; i<4; i++) {
-                ctx.rotate(Math.PI/2);
-                ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(10, -60); ctx.lineTo(-10, -60); ctx.closePath();
-                ctx.fill(); ctx.stroke();
-            }
+            ctx.rotate(this.angle);
+            // БАЗА (Платформа)
+            ctx.beginPath();
+            ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            
+            // ТУРЕЛЬ (Круг)
+            ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            
+            // РАКЕТНИЦЫ (Слева и Справа)
+            ctx.fillStyle = '#550000';
+            // Левая
+            ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20);
+            // Правая
+            ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
+            
+            // Дула
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(35, -35, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(35, 35, 5, 0, Math.PI*2); ctx.fill();
+        }
+        else if(this.type === 'defender') {
+            ctx.rotate(this.angleOffset);
+            // Защитник - ромб
+            ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(0,10); ctx.lineTo(-10,0); ctx.lineTo(0,-10); ctx.closePath();
+            ctx.fill(); ctx.stroke();
         }
         else if(this.type === 'tank') {
             ctx.rotate(this.angle);
-            ctx.beginPath();
-            ctx.moveTo(15, 0);
-            ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15);
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(5, 15); ctx.lineTo(-15, 15); ctx.lineTo(-15, -15); ctx.lineTo(5, -15);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
             ctx.strokeRect(-10, -8, 10, 16);
         }
         else if(this.type === 'runner') {
             ctx.rotate(this.angle);
-            ctx.beginPath();
-            ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8);
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 8); ctx.lineTo(-5, 0); ctx.lineTo(-10, -8);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
         }
         else { 
             ctx.rotate(this.angle);
-            ctx.beginPath();
-            ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10);
-            ctx.closePath();
+            ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 10); ctx.lineTo(-5, -10); ctx.closePath();
             ctx.fill(); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-15, 15); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-15, -15); ctx.stroke();
@@ -539,7 +534,7 @@ function findNearestEnemy(x,y) {
 function startGame() {
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
-    player.reset(); enemies=[]; bullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
+    player.reset(); enemies=[]; bullets=[]; enemyBullets=[]; lootList=[]; missiles=[]; particles=[]; blackHoles=[];
     medkits=0; stars=0; scoreTime=0; killScore=0; bossActive=false;
     currentState = STATE.PLAYING;
     updateUI();
@@ -582,8 +577,7 @@ function animate() {
     requestAnimationFrame(animate);
     if(currentState===STATE.MENU) {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        bg.draw(); 
-        return;
+        bg.draw(); return;
     }
     if(currentState!==STATE.PLAYING) return;
 
@@ -593,7 +587,13 @@ function animate() {
     frameCount++;
     if(frameCount%60===0 && !bossActive) {
         scoreTime++; updateUI();
-        if(scoreTime>0 && scoreTime%60===0) { bossActive=true; enemies=[]; enemies.push(new Enemy(true)); }
+        if(scoreTime>0 && scoreTime%60===0) { 
+            bossActive=true; enemies=[]; 
+            const boss = new Enemy(true);
+            enemies.push(boss);
+            // 5 Защитников
+            for(let i=0; i<5; i++) enemies.push(new Enemy(false, boss));
+        }
         if(Math.random() < 0.03) blackHoles.push(new BlackHole());
     }
     if(!bossActive && frameCount%spawnInterval===0 && enemies.length<MAX_ENEMIES) enemies.push(new Enemy());
@@ -605,6 +605,7 @@ function animate() {
         if(!bh.active) blackHoles.splice(i, 1);
     });
 
+    // Пули игрока
     bullets.forEach((b,i)=>{
         b.update(); b.draw();
         if(!b.active){bullets.splice(i,1); return;}
@@ -616,6 +617,15 @@ function animate() {
                 if(e.hp<=0) killEnemy(e,j);
                 break;
             }
+        }
+    });
+
+    // Пули врагов
+    enemyBullets.forEach((b,i)=>{
+        b.update(); b.draw();
+        if(!b.active){enemyBullets.splice(i,1); return;}
+        if(Math.hypot(player.x-b.x, player.y-b.y) < player.radius) {
+            player.takeDamage(b.dmg); b.active=false;
         }
     });
 
@@ -651,13 +661,13 @@ function killEnemy(e, idx) {
     enemies.splice(idx,1); killScore+=e.boss?1000:100;
     
     // ЛУТ
-    if(!e.boss) {
+    if(!e.boss && !e.isDefender) {
         lootList.push(new Loot(e.x,e.y,'xp'));
         if(Math.random()<0.05) lootList.push(new Loot(e.x+10,e.y,'medkit'));
         if(Math.random()<0.60) lootList.push(new Loot(e.x-10,e.y,'star'));
         if(Math.random()<0.15) lootList.push(new Loot(e.x,e.y+10,'missile'));
     } 
-    else {
+    else if(e.boss) {
         lootList.push(new Loot(e.x,e.y,'mega_medkit')); 
         for(let k=0;k<5;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'star'));
         for(let k=0;k<3;k++) lootList.push(new Loot(e.x+(Math.random()*40-20),e.y+(Math.random()*40-20),'missile'));
