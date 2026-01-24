@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neon Survivors</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -73,7 +74,7 @@
                     <span class="icon">⚡</span> 
                     <div class="res-info">
                         <span id="gunTimer">0s</span>
-                        <span class="res-name">MINIGUN</span>
+                        <span class="res-name">WEAPON</span>
                     </div>
                 </div>
             </div>
@@ -98,7 +99,15 @@
         </div>
     </div>
 
-    <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.8);">
+    <div id="levelUpScreen" class="screen" style="display: none; background: rgba(0,0,0,0.9);">
+        <div class="cyber-panel">
+            <h2 style="color:var(--cyber-cyan); margin-bottom: 30px; text-shadow: 0 0 10px var(--cyber-cyan);">СИСТЕМА ОБНОВЛЕНА</h2>
+            <div id="upgradeContainer" class="upgrade-grid">
+                </div>
+        </div>
+    </div>
+
+    <div id="shopModal" class="screen" style="display: none; background: rgba(0,0,0,0.95);">
         <div class="cyber-panel shop-panel">
             <h2 style="color:var(--cyber-yellow)">ОРУЖЕЙНАЯ</h2>
             <p>Система улучшений временно недоступна...</p>
