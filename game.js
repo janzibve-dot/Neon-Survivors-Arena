@@ -57,7 +57,7 @@ const TRANSLATIONS = {
         ach_survivor: "SURVIVOR", ach_survivor_desc: "Survive a Black Hole",
         weapon_gun: "MINIGUN", weapon_laser: "LASER", weapon_shotgun: "SHOTGUN",
         loot_stored: "STORED", loot_healed: "HEALED", loot_rockets: "ROCKETS!", loot_laser: "LASER!", loot_minigun: "MINIGUN!", loot_shotgun: "SHOTGUN!",
-        level_complete: "LEVEL CLEARED", next_wave_ready: "SYSTEMS RECHARGED. PROGRESS SAVED.", next_level_btn: "NEXT LEVEL",
+        level_complete: "LEVEL CLEARED", next_wave_ready: "SYSTEMS RECHARGED. MEDKITS RESET.", next_level_btn: "NEXT LEVEL",
         rage_ready: "RAGE READY [R]"
     }
 };
@@ -82,14 +82,14 @@ let frameCount = 0;
 let bossTimer = 0;
 let score = 0;
 let highScore = localStorage.getItem('neon_survivor_score') || 0;
-let currentStage = 1; // ТЕКУЩИЙ ЭТАП (ВОЛНА)
+let currentStage = 1; 
 let spawnInterval = 90;
 const MAX_ENEMIES = 50; 
 let medkits = 0;
 let stars = 0;
 let laserKills = 0;
 let achievements = [];
-let blackHoleTimer = 0; // Таймер для дыр
+let blackHoleTimer = 0; 
 
 const keys = {};
 const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -188,13 +188,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const restartBtns = document.querySelectorAll('#gameOverScreen .restart-btn');
     restartBtns.forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('gameOverScreen').style.display = 'none';
-        startGame(); // Перезапуск с сохраненного этапа
+        startGame(); 
     }));
     const nextLevelBtn = document.getElementById('nextLevelBtn');
     if(nextLevelBtn) nextLevelBtn.addEventListener('click', startNextLevel);
     document.getElementById('langBtn').addEventListener('click', toggleLanguage);
     
-    // Показать сохраненный этап в меню
+    // Загрузка звезд из сохранения
+    const savedStars = localStorage.getItem('neon_survivor_stars');
+    if(savedStars) stars = parseInt(savedStars);
+
     const saved = localStorage.getItem('neon_survivor_stage');
     if(saved) document.getElementById('savedStageText').innerText = `SAVED STAGE: ${saved}`;
 
@@ -340,7 +343,11 @@ class Loot {
                 else { medkits++; sound.pickup(); floatText.show(this.x, this.y, t("loot_stored"), "#00ffff"); }
             }
             else if(this.type === 'mega_medkit') { player.heal(9999); sound.powerup(); floatText.show(this.x,this.y, t("loot_healed"),"#00ff00"); }
-            else if(this.type === 'star') { stars++; sound.pickup(); floatText.show(this.x,this.y,"+1 " + t("item_stars"),"#ffea00"); }
+            else if(this.type === 'star') { 
+                stars++; 
+                localStorage.setItem('neon_survivor_stars', stars); // Сохраняем звезды
+                sound.pickup(); floatText.show(this.x,this.y,"+1 " + t("item_stars"),"#ffea00"); 
+            }
             else if(this.type === 'missile_pack') { 
                 sound.powerup(); floatText.show(this.x,this.y, t("loot_rockets"), "#ffaa00");
                 for(let i=0; i<5; i++) { const t = findNearestEnemy(player.x, player.y); if(t) missiles.push(new Missile(player.x, player.y, t)); }
@@ -421,13 +428,9 @@ class Missile {
         if(this.target && this.target.hp > 0) {
             const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             let diff = desired - this.angle;
-            // Улучшенное наведение
             while(diff < -Math.PI) diff+=Math.PI*2; while(diff > Math.PI) diff-=Math.PI*2;
-            this.angle += diff*0.2; // Быстрее поворачивает
-            this.speed += 0.3;
-        } else { 
-            this.target = findNearestEnemy(this.x, this.y); 
-        }
+            this.angle += diff*0.1; this.speed += 0.3;
+        } else { this.target = findNearestEnemy(this.x, this.y); }
         this.x += Math.cos(this.angle)*this.speed; this.y += Math.sin(this.angle)*this.speed;
         if(frameCount%2===0) particles.push(new Particle(this.x,this.y,'#ff5500'));
     }
@@ -443,29 +446,48 @@ const player = {
     cooldown: 0, missiles: 3, missileCd: 0, hitTimer: 0, invulnTimer: 0,
     weaponTimer: 0, currentWeapon: 'normal',
     rage: 0, maxRage: 100,
+    shipType: 'standard', // Тип корабля
     
+    // ПРИМЕНЕНИЕ СТАТОВ КОРАБЛЯ
+    applyShipStats() {
+        const id = localStorage.getItem('ns_equipped_ship') || 'standard';
+        this.shipType = id;
+        
+        // Базовые статы
+        const ship = SHIPS.find(s => s.id === id);
+        if (ship) {
+            this.maxHp = ship.hp + (currentStage * 10); // +HP за каждый этап
+            this.hp = this.maxHp;
+            this.baseSpeed = ship.speed; // Надо добавить скорость в update
+            this.color = ship.color;
+        }
+    },
+
     reset() {
         this.x = canvas.width/2; this.y = canvas.height/2;
-        this.hp = 100; this.maxHp = 100; 
-        // Если это первый запуск (stage 1), сбрасываем уровень игрока
+        
+        // Загрузка типа корабля
+        this.applyShipStats();
+
+        // Если первый запуск
         if (currentStage === 1) {
             this.level = 1; this.xp = 0; this.nextXp = 100;
             this.baseDmg = 10; this.baseFireRate = 10;
         } else {
-            // Если продолжили с чекпоинта, даем буст статов чтобы не было скучно
             this.level = currentStage;
             this.baseDmg = 10 + (currentStage * 2);
-            this.hp = 100 + (currentStage * 10); this.maxHp = this.hp;
         }
         this.dmg = this.baseDmg; this.fireRate = this.baseFireRate;
         this.missiles = 3; this.hitTimer = 0; this.invulnTimer = 0; this.weaponTimer = 0;
         this.currentWeapon = 'normal'; laserKills = 0; score = 0; this.rage = 0;
     },
     update() {
-        if(keys['KeyW'] || keys['ArrowUp']) this.y -= 5;
-        if(keys['KeyS'] || keys['ArrowDown']) this.y += 5;
-        if(keys['KeyA'] || keys['ArrowLeft']) this.x -= 5;
-        if(keys['KeyD'] || keys['ArrowRight']) this.x += 5;
+        const moveSpeed = this.baseSpeed || 5;
+
+        if(keys['KeyW'] || keys['ArrowUp']) this.y -= moveSpeed;
+        if(keys['KeyS'] || keys['ArrowDown']) this.y += moveSpeed;
+        if(keys['KeyA'] || keys['ArrowLeft']) this.x -= moveSpeed;
+        if(keys['KeyD'] || keys['ArrowRight']) this.x += moveSpeed;
         this.x = Math.max(30, Math.min(canvas.width-30, this.x));
         this.y = Math.max(TOP_BOUND + 30, Math.min(canvas.height-30, this.y));
         this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
@@ -548,10 +570,23 @@ const player = {
             ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
         }
         ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
-        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // ОТРИСОВКА В ЗАВИСИМОСТИ ОТ ТИПА КОРАБЛЯ
+        if (this.shipType === 'tank') {
+            // ТАНК (Квадратный)
+            ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
+        } else if (this.shipType === 'scout') {
+            // СКАУТ (Стрела)
+            ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+        } else {
+            // СТАНДАРТ (TIE)
+            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+
         if (this.hitTimer <= 0) { ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill(); }
         ctx.restore();
     }
@@ -565,7 +600,6 @@ class Enemy {
 
         if(boss) {
             this.x=canvas.width/2; this.y=-100; 
-            
             if (currentStage % 10 === 0) {
                 this.type = 'tank_boss'; this.hp = (3000 + currentStage*500)*diff; this.maxHp = this.hp;
                 this.r = 100; this.speed = 0.3; this.color = '#00ff00';
@@ -614,14 +648,9 @@ class Enemy {
             if(this.shootTimer <= 0) {
                 this.shootTimer = this.type === 'ninja_boss' ? 30 : (this.type === 'tank_boss' ? 90 : 45); 
                 sound.enemyShoot();
-                if (this.type === 'ninja_boss') {
-                    for(let i=-2; i<=2; i++) enemyBullets.push(new Bullet(this.x, this.y, a + i*0.2, 15, true));
-                } else if (this.type === 'tank_boss') {
-                    enemyBullets.push(new Bullet(this.x, this.y, a, 50, true));
-                } else {
-                    enemyBullets.push(new Bullet(this.x + Math.cos(a+0.5)*40, this.y + Math.sin(a+0.5)*40, a, 20, true));
-                    enemyBullets.push(new Bullet(this.x + Math.cos(a-0.5)*40, this.y + Math.sin(a-0.5)*40, a, 20, true));
-                }
+                if (this.type === 'ninja_boss') { for(let i=-2; i<=2; i++) enemyBullets.push(new Bullet(this.x, this.y, a + i*0.2, 15, true)); } 
+                else if (this.type === 'tank_boss') { enemyBullets.push(new Bullet(this.x, this.y, a, 50, true)); } 
+                else { enemyBullets.push(new Bullet(this.x + Math.cos(a+0.5)*40, this.y + Math.sin(a+0.5)*40, a, 20, true)); enemyBullets.push(new Bullet(this.x + Math.cos(a-0.5)*40, this.y + Math.sin(a-0.5)*40, a, 20, true)); }
             }
         }
         else if (this.type === 'defender') {
@@ -757,7 +786,6 @@ function updateUI() {
     document.getElementById('rageBar').style.width=(player.rage/player.maxRage*100)+'%';
     document.getElementById('hpText').innerText=hp+'/'+player.maxHp;
     document.getElementById('xpBar').style.width=(player.xp/player.nextXp*100)+'%';
-    // Показываем ЭТАП, а не уровень игрока
     document.getElementById('stageValue').innerText=currentStage;
     
     const showTime = bossActive ? 0 : Math.ceil(bossTimer/60);
@@ -782,7 +810,6 @@ function animate() {
     bg.draw();
 
     frameCount++;
-    
     if (blackHoleTimer > 0) blackHoleTimer--;
 
     if (!bossActive) {
