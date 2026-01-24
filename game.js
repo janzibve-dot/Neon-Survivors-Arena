@@ -3,6 +3,11 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- ЗАГРУЗКА КАРТИНОК ---
+// Мы создаем объект картинки и указываем путь к твоему файлу на GitHub
+const playerImg = new Image();
+playerImg.src = 'assets/images/player.png';
+
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -552,30 +557,29 @@ const player = {
         updateUI();
     },
     draw() {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.angle);
+
         if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
-        let strokeCol = this.color; let fillCol = '#050505';
-        if (this.hitTimer > 0) { strokeCol = '#ff0000'; fillCol = '#550000'; ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; }
-        else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
-        if (this.hitTimer <= 0) {
-            const flicker = Math.random() * 3; ctx.fillStyle = strokeCol;
-            ctx.fillRect(-25 - flicker, -8, 10 + flicker, 2); ctx.fillRect(-25 - flicker, 6, 10 + flicker, 2);
-        }
-        ctx.fillStyle = fillCol; ctx.strokeStyle = strokeCol; ctx.lineWidth = 2;
-        
-        if (this.shipType === 'tank') {
-            ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(20, 20); ctx.lineTo(-20, 20); ctx.lineTo(-20, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.fillRect(10, -25, 15, 5); ctx.fillRect(10, 20, 15, 5);
-        } else if (this.shipType === 'scout') {
-            ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // Эффект удара (красное свечение)
+        if (this.hitTimer > 0) { 
+            ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; 
         } else {
-            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(-20, -25); ctx.lineTo(-25, -10); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(-20, 25); ctx.lineTo(-25, 10); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.fillRect(-5, -15, 6, 30); ctx.strokeRect(-5, -15, 6, 30);
-            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-5, 6); ctx.lineTo(-10, 0); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.shadowBlur = 15; ctx.shadowColor = this.color; 
         }
 
-        if (this.hitTimer <= 0) { ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI*2); ctx.fill(); }
+        // ОТРИСОВКА КАРТИНКИ КОРАБЛЯ ВМЕСТО ФИГУР
+        // Мы рисуем картинку размером 60x60, центрируя её (-30, -30)
+        try {
+            ctx.drawImage(playerImg, -30, -30, 60, 60);
+        } catch(e) {
+            // Если картинка не загрузилась, рисуем запасной квадрат
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-20, -20, 40, 40);
+        }
+
         ctx.restore();
     }
 };
