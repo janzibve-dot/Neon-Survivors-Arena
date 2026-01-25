@@ -4,9 +4,11 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- ЗАГРУЗКА КАРТИНОК ---
-// Мы создаем объект картинки и указываем путь к твоему файлу на GitHub
 const playerImg = new Image();
 playerImg.src = 'assets/images/player.png';
+
+const bossImg = new Image();
+bossImg.src = 'assets/images/boss.png';
 
 function resize() {
     canvas.width = window.innerWidth;
@@ -563,21 +565,15 @@ const player = {
 
         if(this.invulnTimer > 0 && Math.floor(frameCount / 4) % 2 === 0) ctx.globalAlpha = 0.5;
 
-        // Эффект удара (красное свечение)
-        if (this.hitTimer > 0) { 
-            ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; 
-        } else {
-            ctx.shadowBlur = 15; ctx.shadowColor = this.color; 
-        }
+        // Эффект удара
+        if (this.hitTimer > 0) { ctx.shadowBlur = 30; ctx.shadowColor = '#ff0000'; } 
+        else { ctx.shadowBlur = 15; ctx.shadowColor = this.color; }
 
-        // ОТРИСОВКА КАРТИНКИ КОРАБЛЯ ВМЕСТО ФИГУР
-        // Мы рисуем картинку размером 60x60, центрируя её (-30, -30)
+        // ОТРИСОВКА ИГРОКА
         try {
             ctx.drawImage(playerImg, -30, -30, 60, 60);
         } catch(e) {
-            // Если картинка не загрузилась, рисуем запасной квадрат
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-20, -20, 40, 40);
+            ctx.fillStyle = this.color; ctx.fillRect(-20, -20, 40, 40);
         }
 
         ctx.restore();
@@ -665,6 +661,7 @@ class Enemy {
     draw() {
         ctx.save(); ctx.translate(this.x, this.y);
         ctx.shadowBlur=15; ctx.shadowColor=this.color; ctx.lineWidth = 2; ctx.strokeStyle = this.color; ctx.fillStyle = '#050505';
+        
         if(this.type.includes('boss')) { 
             ctx.rotate(this.angle); 
             if (this.type === 'tank_boss') {
@@ -675,9 +672,17 @@ class Enemy {
                 ctx.fillStyle = '#220033';
                 ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-30, 30); ctx.lineTo(-30, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
             } else {
-                ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
+                // --- ЗДЕСЬ РИСУЕМ КАРТИНКУ ОБЫЧНОГО БОССА ---
+                // Пробуем нарисовать картинку. Если она не загрузилась — рисуем старую геометрию.
+                try {
+                    // Рисуем картинку размером 140x140 (радиус был 70)
+                    ctx.drawImage(bossImg, -70, -70, 140, 140);
+                } catch(e) {
+                    // ЗАПАСНОЙ ВАРИАНТ (Старый код)
+                    ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(10, 30); ctx.lineTo(-30, 30); ctx.lineTo(-40, 0); ctx.lineTo(-30, -30); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#330000'; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#550000'; ctx.fillRect(5, -45, 30, 20); ctx.strokeRect(5, -45, 30, 20); ctx.fillRect(5, 25, 30, 20); ctx.strokeRect(5, 25, 30, 20);
+                }
             }
         }
         else if(this.type === 'kamikaze') {
